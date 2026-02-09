@@ -1,0 +1,84 @@
+:root {
+    --primary: #FFC107; /* Amarelo UTFPR */
+    --dark: #1a1a1a;
+    --light: #f4f4f4;
+    --text: #333;
+}
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    margin: 0;
+    background-color: var(--light);
+    color: var(--text);
+}
+
+header {
+    background: var(--dark);
+    color: white;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-area { display: flex; align-items: center; gap: 10px; }
+.logo-area h1 { font-size: 1.2rem; margin: 0; }
+.material-icons-round { vertical-align: middle; }
+
+.step { padding: 20px; display: none; }
+.step.active { display: block; animation: fadein 0.3s; }
+
+.grid-menu {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.card-btn {
+    background: white;
+    border: none;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.1s;
+}
+
+.card-btn:active { transform: scale(0.98); background: #eee; }
+.card-btn i { font-size: 2rem; color: #555; }
+
+.btn-voltar { background: none; border: none; color: #666; font-size: 1rem; margin-bottom: 10px; cursor: pointer;}
+
+.btn-enviar {
+    width: 100%;
+    background: var(--dark);
+    color: var(--primary);
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    margin-top: 20px;
+    cursor: pointer;
+}
+
+.btn-foto {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: #e0e0e0;
+    padding: 15px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.hidden { display: none !important; }
+
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }

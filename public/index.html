@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeloUTF - Zeladoria Colaborativa</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <span class="material-icons-round">volunteer_activism</span>
+            <h1 id="campus-name">Carregando Câmpus...</h1>
+        </div>
+        <div class="user-badge" id="user-badge">
+            <small>ID: ...</small>
+        </div>
+    </header>
+
+    <main id="app-container">
+        <section id="step-bloco" class="step active">
+            <h2>Onde você está?</h2>
+            <div class="grid-menu" id="lista-blocos">
+                </div>
+        </section>
+
+        <section id="step-categoria" class="step hidden">
+            <button class="btn-voltar" onclick="voltar('step-bloco')">← Voltar</button>
+            <h2>Qual é o problema?</h2>
+            <h3 id="local-selecionado" class="subtitle">...</h3>
+            <div class="grid-menu" id="lista-categorias">
+                </div>
+        </section>
+
+        <section id="step-detalhes" class="step hidden">
+            <button class="btn-voltar" onclick="voltar('step-categoria')">← Voltar</button>
+            <h2>Detalhes</h2>
+
+            <form id="form-report">
+                <div class="form-group">
+                    <label>Selecione o Problema Específico:</label>
+                    <select id="input-subcategoria" required>
+                        </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Complemento (Opcional):</label>
+                    <input type="text" id="input-ambiente" placeholder="Ex: Sala A102, Banheiro Masc...">
+                </div>
+
+                <div class="form-group photo-upload">
+                    <label for="input-foto" class="btn-foto">
+                        <span class="material-icons-round">camera_alt</span>
+                        Tirar Foto
+                    </label>
+                    <input type="file" id="input-foto" accept="image/*" capture="environment" hidden>
+                    <span id="foto-status">Nenhuma foto selecionada</span>
+                </div>
+
+                <button type="submit" class="btn-enviar">ENVIAR RELATO</button>
+            </form>
+        </section>
+
+        <section id="step-sucesso" class="step hidden">
+            <div class="success-card">
+                <span class="material-icons-round icon-big">check_circle</span>
+                <h2>Recebido!</h2>
+                <p>A direção do câmpus foi notificada</p>
+                <button onclick="location.reload()" class="btn-restart">Novo Relato</button>
+            </div>
+        </section>
+    </main>
+
+    <script src="assets/js/data.js"></script>
+    <script src="assets/js/app.js"></script>
+</body>
+</html>
