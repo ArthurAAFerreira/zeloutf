@@ -1,9 +1,8 @@
-// --- DADOS (O Cérebro do Site) ---
+// --- DADOS (Editado: Apenas Curitiba e Londrina) ---
 const CAMPI = {
     'ct': { nome: 'Curitiba', id: 'ct' },
     'ld': { nome: 'Londrina', id: 'ld' },
-    'cp': { nome: 'Cornélio Procópio', id: 'cp' },
-    'pg': { nome: 'Ponta Grossa', id: 'pg' },
+    // Outros campus removidos conforme pedido
     'default': { nome: 'Selecione seu Câmpus', id: 'default' }
 };
 
@@ -38,12 +37,10 @@ const CATEGORIAS = {
 const SUPABASE_URL = 'https://jkmftolpmchsnxsjxoji.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprbWZ0b2xwbWNoc254c2p4b2ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NjA5MTUsImV4cCI6MjA4NjIzNjkxNX0.WifDxpU_xqWA4Rx-OKSoeGAvPr4RTFK2NpJqC7gc_0M';
 
-// Tenta iniciar o Supabase (Proteção contra erro se script não carregar)
+// Tenta iniciar o Supabase
 let supabase;
-if (typeof supabase !== 'undefined') {
+if (typeof supabase !== 'undefined') { // Verifica se a biblioteca carregou
     supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-} else {
-    console.error("ERRO CRÍTICO: Biblioteca do Supabase não carregou no HTML.");
 }
 
 // --- ESTADO DO APP ---
@@ -57,20 +54,12 @@ let estado = {
 
 // --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
-    try {
-        identificarCampus();
-        gerarDeviceId();
-        // Se já tiver campus selecionado, carrega os blocos
-        if(estado.campus && estado.campus.id !== 'default') {
-            carregarBlocos();
-        }
-    } catch (e) {
-        console.error("Erro ao iniciar:", e);
-        alert("Ocorreu um erro ao carregar o site. Tente recarregar.");
-    }
+    identificarCampus();
+    gerarDeviceId();
 });
 
 function identificarCampus() {
+    // 1. Tenta pegar da URL (ex: ?c=ct)
     const params = new URLSearchParams(window.location.search);
     const campusCode = params.get('c');
     let campusInfo = null;
@@ -83,15 +72,21 @@ function identificarCampus() {
 
     estado.campus = campusInfo;
 
+    // 2. Atualiza a tela
     const campusTitle = document.getElementById('campus-name');
     if (campusTitle) {
         if (campusInfo.id === 'default') {
+            // Se não tem campus na URL, mostra a tela de escolha
             campusTitle.innerText = "ZeloUTF";
             carregarListaCampus();
-            mudarTela('step-bloco', 'step-campus');
+
+            // Força mostrar a tela de seleção e esconder as outras
+            mudarTela(null, 'step-campus');
         } else {
+            // Se já tem campus, vai direto para os blocos
             campusTitle.innerText = `UTFPR - ${campusInfo.nome}`;
-            carregarBlocos(); // Garante que carrega os blocos se já souber o campus
+            carregarBlocos();
+            mudarTela(null, 'step-bloco');
         }
     }
 }
@@ -102,16 +97,18 @@ function carregarListaCampus() {
     container.innerHTML = '';
 
     for (const key in CAMPI) {
-        if (key === 'default') continue;
+        if (key === 'default') continue; // Pula o "Selecione"
+
         const campus = CAMPI[key];
         const btn = document.createElement('button');
         btn.className = 'card-btn';
         btn.innerHTML = `<span class="material-icons-round">location_on</span> <span>${campus.nome}</span>`;
         btn.onclick = () => {
+            // Salva a escolha e avança
             estado.campus = campus;
             document.getElementById('campus-name').innerText = `UTFPR - ${campus.nome}`;
-            mudarTela('step-campus', 'step-bloco');
             carregarBlocos();
+            mudarTela('step-campus', 'step-bloco');
         };
         container.appendChild(btn);
     }
@@ -189,12 +186,13 @@ function selecionarCategoria(key, categoriaObjeto) {
 }
 
 function mudarTela(atual, proxima) {
-    // Esconde todas as steps para garantir
+    // Esconde TODAS as telas primeiro
     document.querySelectorAll('.step').forEach(s => {
         s.classList.add('hidden');
         s.classList.remove('active');
     });
 
+    // Mostra só a próxima
     const elProx = document.getElementById(proxima);
     if(elProx) {
         elProx.classList.remove('hidden');
@@ -222,7 +220,7 @@ if(form) {
         }
 
         if (typeof supabase === 'undefined') {
-            alert("Erro: O sistema de banco de dados não carregou. Recarregue a página.");
+            alert("Erro de conexão com o banco de dados. Recarregue a página.");
             return;
         }
 
@@ -233,7 +231,7 @@ if(form) {
             device_id: estado.deviceId,
             ambiente: complementoInput.value || "Não informado",
             categoria: estado.categoria.nome,
-            descricao: `${subcategoriaInput.value} - ${estado.bloco.nome}`,
+            descricao: `${subcategoriaInput.value} - ${estado.bloco.nome} (${estado.campus.nome})`,
             status: 'pendente'
         };
 
