@@ -21,7 +21,7 @@ const CATEGORIAS = {
     'limpeza': {
         nome: 'Limpeza',
         icone: 'cleaning_services',
-        itens: ['Chão Sujo', 'Lixo Cheio', 'Derramamento', 'Mau Cheiro', 'Falta de Papel/Sabão']
+        itens: ['Chão Sujo.', 'Lixo Cheio', 'Derramamento', 'Mau Cheiro', 'Falta de Papel/Sabão']
     },
     'manutencao': {
         nome: 'Manutenção',
