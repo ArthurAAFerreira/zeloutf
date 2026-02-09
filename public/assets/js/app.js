@@ -1,9 +1,8 @@
-// --- DADOS (Editado: Apenas Curitiba e Londrina) ---
+// --- CONFIGURAÇÃO (Só Curitiba e Londrina) ---
 const CAMPI = {
     'ct': { nome: 'Curitiba', id: 'ct' },
     'ld': { nome: 'Londrina', id: 'ld' },
-    // Outros campus removidos conforme pedido
-    'default': { nome: 'Selecione seu Câmpus', id: 'default' }
+    'default': { nome: 'Selecione', id: 'default' }
 };
 
 const BLOCOS = [
@@ -17,234 +16,176 @@ const BLOCOS = [
 
 const CATEGORIAS = {
     'limpeza': {
-        nome: 'Limpeza',
-        icone: 'cleaning_services',
+        nome: 'Limpeza', icone: 'cleaning_services',
         itens: ['Chão Sujo', 'Lixo Cheio', 'Derramamento', 'Mau Cheiro', 'Falta de Papel/Sabão']
     },
     'manutencao': {
-        nome: 'Manutenção',
-        icone: 'build',
-        itens: ['Lâmpada Queimada', 'Tomada com Defeito', 'Porta Quebrada', 'Vazamento', 'Ar Condicionado']
+        nome: 'Manutenção', icone: 'build',
+        itens: ['Lâmpada Queimada', 'Tomada', 'Porta Quebrada', 'Vazamento', 'Ar Condicionado']
     },
     'seguranca': {
-        nome: 'Segurança',
-        icone: 'security',
-        itens: ['Porta Aberta Indevida', 'Extintor Vencido', 'Local Escuro', 'Fios Expostos']
+        nome: 'Segurança', icone: 'security',
+        itens: ['Porta Aberta', 'Extintor Vencido', 'Local Escuro', 'Fios Expostos']
     }
 };
 
-// --- CONFIGURAÇÃO SUPABASE ---
+// --- INICIAR SUPABASE (Correção de Bug) ---
 const SUPABASE_URL = 'https://jkmftolpmchsnxsjxoji.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprbWZ0b2xwbWNoc254c2p4b2ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NjA5MTUsImV4cCI6MjA4NjIzNjkxNX0.WifDxpU_xqWA4Rx-OKSoeGAvPr4RTFK2NpJqC7gc_0M';
 
-// Tenta iniciar o Supabase
-let supabase;
-if (typeof supabase !== 'undefined') { // Verifica se a biblioteca carregou
-    supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-}
+// Cria o cliente usando a variável global 'supabase' que vem do HTML
+const db = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
-// --- ESTADO DO APP ---
-let estado = {
-    campus: null,
-    bloco: null,
-    categoria: null,
-    subcategoria: null,
-    deviceId: null
-};
+let estado = { campus: null, bloco: null, categoria: null, subcategoria: null, deviceId: null };
 
 // --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
-    identificarCampus();
     gerarDeviceId();
+    identificarCampus();
 });
 
 function identificarCampus() {
-    // 1. Tenta pegar da URL (ex: ?c=ct)
     const params = new URLSearchParams(window.location.search);
-    const campusCode = params.get('c');
-    let campusInfo = null;
+    const code = params.get('c');
 
-    if (campusCode && CAMPI[campusCode]) {
-        campusInfo = CAMPI[campusCode];
-    } else {
-        campusInfo = CAMPI['default'];
-    }
-
+    // Se tiver código válido na URL, usa ele. Se não, usa default.
+    const campusInfo = (code && CAMPI[code]) ? CAMPI[code] : CAMPI['default'];
     estado.campus = campusInfo;
 
-    // 2. Atualiza a tela
-    const campusTitle = document.getElementById('campus-name');
-    if (campusTitle) {
-        if (campusInfo.id === 'default') {
-            // Se não tem campus na URL, mostra a tela de escolha
-            campusTitle.innerText = "ZeloUTF";
-            carregarListaCampus();
+    const titulo = document.getElementById('campus-name');
 
-            // Força mostrar a tela de seleção e esconder as outras
-            mudarTela(null, 'step-campus');
-        } else {
-            // Se já tem campus, vai direto para os blocos
-            campusTitle.innerText = `UTFPR - ${campusInfo.nome}`;
-            carregarBlocos();
-            mudarTela(null, 'step-bloco');
-        }
+    if (campusInfo.id === 'default') {
+        // TELA DE SELEÇÃO (Curitiba / Londrina)
+        if(titulo) titulo.innerText = "ZeloUTF";
+        renderizarBotoesCampus();
+        mudarTela('step-campus');
+    } else {
+        // TELA DE BLOCOS (Já sabe o campus)
+        if(titulo) titulo.innerText = `UTFPR - ${campusInfo.nome}`;
+        renderizarBlocos();
+        mudarTela('step-bloco');
     }
 }
 
-function carregarListaCampus() {
+function renderizarBotoesCampus() {
     const container = document.getElementById('lista-campus');
-    if(!container) return;
+    if (!container) return; // Se não achar a div, para aqui (evita erro)
     container.innerHTML = '';
 
     for (const key in CAMPI) {
-        if (key === 'default') continue; // Pula o "Selecione"
-
-        const campus = CAMPI[key];
+        if (key === 'default') continue;
+        const c = CAMPI[key];
         const btn = document.createElement('button');
         btn.className = 'card-btn';
-        btn.innerHTML = `<span class="material-icons-round">location_on</span> <span>${campus.nome}</span>`;
+        btn.innerHTML = `<span class="material-icons-round">location_on</span> <span>${c.nome}</span>`;
         btn.onclick = () => {
-            // Salva a escolha e avança
-            estado.campus = campus;
-            document.getElementById('campus-name').innerText = `UTFPR - ${campus.nome}`;
-            carregarBlocos();
-            mudarTela('step-campus', 'step-bloco');
+            estado.campus = c;
+            document.getElementById('campus-name').innerText = `UTFPR - ${c.nome}`;
+            renderizarBlocos();
+            mudarTela('step-bloco');
         };
         container.appendChild(btn);
     }
 }
 
-function carregarBlocos() {
+function renderizarBlocos() {
     const container = document.getElementById('lista-blocos');
-    if(!container) return;
+    if (!container) return;
     container.innerHTML = '';
-
     BLOCOS.forEach(bloco => {
         const btn = document.createElement('button');
         btn.className = 'card-btn';
         btn.innerHTML = `<span class="material-icons-round">${bloco.icone}</span> <span>${bloco.nome}</span>`;
-        btn.onclick = () => selecionarBloco(bloco);
+        btn.onclick = () => {
+            estado.bloco = bloco;
+            renderizarCategorias();
+            mudarTela('step-categoria');
+            document.getElementById('local-selecionado').innerText = `Problema no ${bloco.nome}`;
+        };
         container.appendChild(btn);
     });
 }
 
-function gerarDeviceId() {
-    let id = localStorage.getItem('zelo_device_id');
-    if (!id) {
-        id = crypto.randomUUID().split('-')[0];
-        localStorage.setItem('zelo_device_id', id);
-    }
-    estado.deviceId = id;
-    const badge = document.getElementById('user-badge');
-    if(badge) badge.innerHTML = `<small>ID: ${id}</small>`;
-}
-
-// --- NAVEGAÇÃO ---
-function selecionarBloco(bloco) {
-    estado.bloco = bloco;
-    mudarTela('step-bloco', 'step-categoria');
-    const localSel = document.getElementById('local-selecionado');
-    if(localSel) localSel.innerText = `Problema no ${bloco.nome}`;
-    carregarCategorias();
-}
-
-function carregarCategorias() {
+function renderizarCategorias() {
     const container = document.getElementById('lista-categorias');
-    if(!container) return;
+    if (!container) return;
     container.innerHTML = '';
-
     for (const key in CATEGORIAS) {
         const cat = CATEGORIAS[key];
         const btn = document.createElement('button');
         btn.className = 'card-btn';
         btn.innerHTML = `<span class="material-icons-round">${cat.icone}</span> <span>${cat.nome}</span>`;
-        btn.onclick = () => selecionarCategoria(key, cat);
+        btn.onclick = () => {
+            estado.categoria = cat;
+            preencherDetalhes(cat);
+            mudarTela('step-detalhes');
+        };
         container.appendChild(btn);
     }
 }
 
-function selecionarCategoria(key, categoriaObjeto) {
-    estado.categoria = categoriaObjeto;
-    mudarTela('step-categoria', 'step-detalhes');
-
+function preencherDetalhes(cat) {
     const select = document.getElementById('input-subcategoria');
     if(select) {
-        select.innerHTML = '';
-        const defaultOption = document.createElement('option');
-        defaultOption.text = "Selecione o detalhe...";
-        defaultOption.value = "";
-        select.appendChild(defaultOption);
-
-        categoriaObjeto.itens.forEach(item => {
-            const option = document.createElement('option');
-            option.value = item;
-            option.innerText = item;
-            select.appendChild(option);
+        select.innerHTML = '<option value="">Selecione o detalhe...</option>';
+        cat.itens.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item;
+            opt.innerText = item;
+            select.appendChild(opt);
         });
-        select.onchange = (e) => { estado.subcategoria = e.target.value; };
+        select.onchange = (e) => estado.subcategoria = e.target.value;
     }
 }
 
-function mudarTela(atual, proxima) {
-    // Esconde TODAS as telas primeiro
-    document.querySelectorAll('.step').forEach(s => {
-        s.classList.add('hidden');
-        s.classList.remove('active');
-    });
+function mudarTela(idTela) {
+    document.querySelectorAll('.step').forEach(el => el.classList.add('hidden'));
+    const alvo = document.getElementById(idTela);
+    if(alvo) alvo.classList.remove('hidden');
+}
 
-    // Mostra só a próxima
-    const elProx = document.getElementById(proxima);
-    if(elProx) {
-        elProx.classList.remove('hidden');
-        elProx.classList.add('active');
+window.voltar = (id) => mudarTela(id);
+
+function gerarDeviceId() {
+    let id = localStorage.getItem('zelo_device_id');
+    if (!id) {
+        id = Math.random().toString(36).substring(2, 9); // Gera ID simples compatível
+        localStorage.setItem('zelo_device_id', id);
     }
+    estado.deviceId = id;
 }
 
-window.voltar = function(telaAlvo) {
-    mudarTela(null, telaAlvo);
-}
-
-// --- ENVIO AO SUPABASE ---
+// ENVIO
 const form = document.getElementById('form-report');
 if(form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-
-        const subcategoriaInput = document.getElementById('input-subcategoria');
-        const complementoInput = document.getElementById('input-ambiente');
         const btn = document.querySelector('.btn-enviar');
+        const ambiente = document.getElementById('input-ambiente').value;
 
-        if(!subcategoriaInput.value) {
-            alert("Por favor, selecione qual é o problema específico.");
-            return;
-        }
-
-        if (typeof supabase === 'undefined') {
-            alert("Erro de conexão com o banco de dados. Recarregue a página.");
-            return;
-        }
+        if(!estado.subcategoria) { alert("Selecione o problema."); return; }
+        if(!db) { alert("Erro no sistema (Supabase). Recarregue a página."); return; }
 
         btn.innerText = 'Enviando...';
         btn.disabled = true;
 
         const dados = {
             device_id: estado.deviceId,
-            ambiente: complementoInput.value || "Não informado",
+            ambiente: ambiente || "Não informado",
             categoria: estado.categoria.nome,
-            descricao: `${subcategoriaInput.value} - ${estado.bloco.nome} (${estado.campus.nome})`,
+            descricao: `${estado.subcategoria} - ${estado.bloco.nome} (${estado.campus.nome})`,
             status: 'pendente'
         };
 
-        const { error } = await supabase.from('ocorrencias').insert([dados]);
+        const { error } = await db.from('ocorrencias').insert([dados]);
 
         if (error) {
-            console.error(error);
-            alert('Erro ao enviar: ' + error.message);
+            alert('Erro: ' + error.message);
             btn.innerText = 'Tentar Novamente';
             btn.disabled = false;
         } else {
-            mudarTela('step-detalhes', 'step-sucesso');
-            btn.innerText = 'ENVIAR RELATO';
+            mudarTela('step-sucesso');
+            btn.innerText = 'ENVIAR';
             btn.disabled = false;
         }
     });
