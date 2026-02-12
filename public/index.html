@@ -15,14 +15,30 @@
         .hidden { display: none !important; }
 
         .grid-menu { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        /* Botões */
         .card-btn { background: white; border: 2px solid #eee; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: all 0.2s; width: 100%; font-size: 1rem; font-weight: 600; color: #555; }
         .card-btn:hover { border-color: var(--primary); background: #fffdf0; transform: translateY(-2px); }
         .card-btn span.material-icons-round { font-size: 32px; color: #e6c200; }
 
-        select, input { width: 100%; padding: 15px; margin-bottom: 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; }
-        .btn-enviar { width: 100%; background: var(--dark); color: var(--primary); padding: 18px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        /* Estilos do Formulário */
+        label { font-weight: 600; font-size: 0.9rem; color: #666; display: block; margin-top: 15px; margin-bottom: 5px; }
+        select, input, textarea { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; font-family: 'Inter'; }
+        textarea { resize: vertical; min-height: 80px; }
+
+        /* Botões de Tipo (Reclamação vs Melhoria) */
+        .tipo-selector { display: flex; gap: 10px; margin-bottom: 10px; }
+        .tipo-btn { flex: 1; padding: 10px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; text-align: center; font-weight: 600; color: #888; transition: 0.2s; }
+        .tipo-btn.selected { border-color: var(--primary); background: #fffdf0; color: #333; }
+
+        .btn-enviar { width: 100%; background: var(--dark); color: var(--primary); padding: 18px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; }
         .btn-voltar { background: none; border: none; color: #666; font-size: 14px; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+
+        /* Lista de Relatos Existentes */
+        .lista-relatos { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
+        .btn-ver-relatos { width: 100%; background: #eee; border: none; padding: 12px; border-radius: 8px; color: #555; font-weight: 600; cursor: pointer; }
+        .relato-item { background: #f9f9f9; padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 0.9rem; border-left: 4px solid #ccc; }
+        .relato-item.reclamação { border-left-color: #ff4444; }
+        .relato-item.melhoria { border-left-color: #44aa44; }
+        .relato-header { display: flex; justify-content: space-between; font-size: 0.8rem; color: #888; margin-bottom: 5px; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -33,7 +49,6 @@
     </header>
 
     <main class="container">
-
         <section id="step-campus" class="step hidden">
             <h2>Selecione sua Unidade</h2>
             <div class="grid-menu" id="lista-campus"></div>
@@ -66,20 +81,48 @@
         <section id="step-detalhes" class="step hidden">
             <button class="btn-voltar" onclick="voltar('step-categoria')">⬅ Voltar</button>
             <h2>Detalhes</h2>
-            <form id="form-report">
-                <label>Especifique o problema:</label>
-                <select id="input-subcategoria" required><option value="">Carregando...</option></select>
 
-                <label>Número da Sala / Local exato:</label>
-                <input type="text" id="input-complemento" placeholder="Ex: Sala 104, Lab 3...">
+            <form id="form-report">
+                <label>Qual o tipo do relato?</label>
+                <div class="tipo-selector">
+                    <div class="tipo-btn selected" id="btn-reclamacao" onclick="selecionarTipo('Reclamação')">
+                        ⚠ Fato Ocorrido
+                    </div>
+                    <div class="tipo-btn" id="btn-melhoria" onclick="selecionarTipo('Melhoria')">
+                        💡 Melhoria
+                    </div>
+                </div>
+
+                <label>Especifique o problema:</label>
+                <select id="input-subcategoria" required>
+                    <option value="">Carregando...</option>
+                </select>
+
+                <label>Local Exato (Nº da Sala):</label>
+                <input type="text" id="input-complemento" placeholder="Ex: Sala 104, Lab 3..." required>
+
+                <label>Descrição (Opcional):</label>
+                <textarea id="input-descricao" placeholder="Descreva melhor o que aconteceu..."></textarea>
+
+                <label>Foto (Opcional):</label>
+                <input type="file" id="input-foto" accept="image/*" capture="environment">
 
                 <button type="submit" class="btn-enviar">ENVIAR RELATO</button>
             </form>
+
+            <div class="lista-relatos">
+                <button class="btn-ver-relatos" onclick="carregarRelatosExistentes()">
+                    📋 Ver relatos neste local
+                </button>
+                <div id="container-relatos-antigos" style="margin-top: 15px;"></div>
+            </div>
         </section>
 
         <section id="step-sucesso" class="step hidden" style="text-align: center; padding: 40px 0;">
             <span class="material-icons-round" style="font-size: 64px; color: green;">check_circle</span>
             <h2>Recebido!</h2>
+            <p>Seu relato foi enviado para análise.</p>
+            <br>
             <button class="card-btn" onclick="location.reload()">Novo Relato</button>
         </section>
 
