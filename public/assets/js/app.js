@@ -1,209 +1,196 @@
-// --- CONFIGURAÇÃO ---
-const CAMPI = {
-    'ct': { nome: 'Curitiba', id: 'ct' },
-    'ld': { nome: 'Londrina', id: 'ld' },
-    'default': { nome: 'Selecione', id: 'default' }
-};
-
-const BLOCOS = [
-    { nome: 'Bloco A', icone: 'school', id: 'A' },
-    { nome: 'Bloco B', icone: 'science', id: 'B' },
-    { nome: 'Bloco C', icone: 'menu_book', id: 'C' },
-    { nome: 'Bloco D', icone: 'sports_soccer', id: 'D' },
-    { nome: 'Banheiros', icone: 'wc', id: 'WC' },
-    { nome: 'Pátio', icone: 'park', id: 'PATIO' }
-];
-
-const CATEGORIAS = {
-    'limpeza': {
-        nome: 'Limpeza', icone: 'cleaning_services',
-        itens: ['Chão Sujo', 'Lixo Cheio', 'Derramamento', 'Mau Cheiro', 'Falta de Papel/Sabão']
-    },
-    'manutencao': {
-        nome: 'Manutenção', icone: 'build',
-        itens: ['Lâmpada Queimada', 'Tomada', 'Porta Quebrada', 'Vazamento', 'Ar Condicionado']
-    },
-    'seguranca': {
-        nome: 'Segurança', icone: 'security',
-        itens: ['Porta Aberta', 'Extintor Vencido', 'Local Escuro', 'Fios Expostos']
-    }
-};
-
+// --- CONFIGURAÇÃO SUPABASE ---
 const SUPABASE_URL = 'https://jkmftolpmchsnxsjxoji.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprbWZ0b2xwbWNoc254c2p4b2ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NjA5MTUsImV4cCI6MjA4NjIzNjkxNX0.WifDxpU_xqWA4Rx-OKSoeGAvPr4RTFK2NpJqC7gc_0M';
-
 const db = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-let estado = { campus: null, bloco: null, categoria: null, subcategoria: null, deviceId: null };
 
-// --- INICIALIZAÇÃO ---
+// --- ESTADO GLOBAL ---
+let estado = {
+    campusId: null,
+    sedeId: null,
+    blocoNome: null,
+    ambienteNome: null,
+    categoria: null,
+    subcategoria: null,
+    deviceId: null
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     gerarDeviceId();
-    identificarCampus();
-
-    // Permite que o botão "Voltar" do navegador funcione
-    window.addEventListener('popstate', () => {
-        identificarCampus();
-    });
+    iniciarApp();
+    window.onpopstate = () => iniciarApp();
 });
 
-function identificarCampus() {
-    // Pega o código da URL (ex: ?c=ct)
+function iniciarApp() {
+    // 1. Verifica URL (?c=ct)
     const params = new URLSearchParams(window.location.search);
     const code = params.get('c');
 
-    // Verifica se o código é válido
-    const campusInfo = (code && CAMPI[code]) ? CAMPI[code] : CAMPI['default'];
-    estado.campus = campusInfo;
+    if (code && DADOS_UNIDADES[code]) {
+        estado.campusId = code;
+        const campus = DADOS_UNIDADES[code];
+        document.getElementById('campus-name').innerText = `UTFPR - ${campus.nome}`;
 
-    const titulo = document.getElementById('campus-name');
-
-    if (campusInfo.id === 'default') {
-        // Modo Seleção
-        if(titulo) titulo.innerText = "ZeloUTF";
-        renderizarBotoesCampus();
-        mudarTela('step-campus');
+        if (campus.temSedes) {
+            renderizarSedes(campus.sedes);
+            mudarTela('step-sede');
+        } else {
+            renderizarBlocos(campus.blocos);
+            mudarTela('step-bloco');
+        }
     } else {
-        // Modo Câmpus Selecionado
-        if(titulo) titulo.innerText = `UTFPR - ${campusInfo.nome}`;
-        renderizarBlocos();
-        mudarTela('step-bloco');
+        document.getElementById('campus-name').innerText = "ZeloUTF";
+        renderizarListaCampus();
+        mudarTela('step-campus');
     }
 }
 
-function renderizarBotoesCampus() {
+// --- RENDERIZADORES ---
+
+function renderizarListaCampus() {
     const container = document.getElementById('lista-campus');
-    if (!container) return;
     container.innerHTML = '';
-
-    for (const key in CAMPI) {
-        if (key === 'default') continue;
-        const c = CAMPI[key];
-        const btn = document.createElement('button');
-        btn.className = 'card-btn';
-        btn.innerHTML = `<span class="material-icons-round">location_on</span> <span>${c.nome}</span>`;
-
-        btn.onclick = () => {
-            // --- A MÁGICA ACONTECE AQUI ---
-            // Atualiza a URL para ?c=ct sem recarregar a página
-            const novaUrl = window.location.pathname + '?c=' + c.id;
-            history.pushState({id: c.id}, '', novaUrl);
-
-            // Força a atualização da tela
-            identificarCampus();
-        };
-
-        container.appendChild(btn);
+    for (const key in DADOS_UNIDADES) {
+        const c = DADOS_UNIDADES[key];
+        criarBotao(container, 'location_on', c.nome, () => {
+            const novaUrl = window.location.pathname + '?c=' + key;
+            history.pushState({id: key}, '', novaUrl);
+            iniciarApp();
+        });
     }
 }
 
-function renderizarBlocos() {
-    const container = document.getElementById('lista-blocos');
-    if (!container) return;
+function renderizarSedes(sedes) {
+    const container = document.getElementById('lista-sedes');
     container.innerHTML = '';
-    BLOCOS.forEach(bloco => {
-        const btn = document.createElement('button');
-        btn.className = 'card-btn';
-        btn.innerHTML = `<span class="material-icons-round">${bloco.icone}</span> <span>${bloco.nome}</span>`;
-        btn.onclick = () => {
-            estado.bloco = bloco;
+    for (const key in sedes) {
+        const s = sedes[key];
+        criarBotao(container, 'business', s.nome, () => {
+            estado.sedeId = key;
+            renderizarBlocos(s.blocos);
+            mudarTela('step-bloco');
+        });
+    }
+}
+
+function renderizarBlocos(listaBlocos) {
+    const container = document.getElementById('lista-blocos');
+    container.innerHTML = '';
+
+    // listaBlocos agora é um Array de strings ["Bloco A", "Bloco B"...] vindo do data.js
+    listaBlocos.forEach(blocoNome => {
+        criarBotao(container, 'domain', blocoNome, () => {
+            estado.blocoNome = blocoNome;
+            document.getElementById('titulo-bloco-selecionado').innerText = `Onde no ${blocoNome}?`;
+            renderizarAmbientes();
+            mudarTela('step-ambiente');
+        });
+    });
+}
+
+function renderizarAmbientes() {
+    const container = document.getElementById('lista-ambientes');
+    container.innerHTML = '';
+    AMBIENTES_PADRAO.forEach(amb => {
+        criarBotao(container, amb.icone, amb.nome, () => {
+            estado.ambienteNome = amb.nome;
             renderizarCategorias();
             mudarTela('step-categoria');
-            document.getElementById('local-selecionado').innerText = `Problema no ${bloco.nome}`;
-        };
-        container.appendChild(btn);
+        });
     });
 }
 
 function renderizarCategorias() {
     const container = document.getElementById('lista-categorias');
-    if (!container) return;
     container.innerHTML = '';
     for (const key in CATEGORIAS) {
         const cat = CATEGORIAS[key];
-        const btn = document.createElement('button');
-        btn.className = 'card-btn';
-        btn.innerHTML = `<span class="material-icons-round">${cat.icone}</span> <span>${cat.nome}</span>`;
-        btn.onclick = () => {
+        criarBotao(container, cat.icone, cat.nome, () => {
             estado.categoria = cat;
             preencherDetalhes(cat);
             mudarTela('step-detalhes');
-        };
-        container.appendChild(btn);
+        });
     }
+}
+
+// --- UTILITÁRIOS ---
+
+function criarBotao(container, icone, texto, onClick) {
+    const btn = document.createElement('button');
+    btn.className = 'card-btn';
+    btn.innerHTML = `<span class="material-icons-round">${icone}</span> <span>${texto}</span>`;
+    btn.onclick = onClick;
+    container.appendChild(btn);
 }
 
 function preencherDetalhes(cat) {
     const select = document.getElementById('input-subcategoria');
-    if(select) {
-        select.innerHTML = '<option value="">Selecione o detalhe...</option>';
-        cat.itens.forEach(item => {
-            const opt = document.createElement('option');
-            opt.value = item;
-            opt.innerText = item;
-            select.appendChild(opt);
-        });
-        select.onchange = (e) => estado.subcategoria = e.target.value;
-    }
+    select.innerHTML = '<option value="">Selecione o problema...</option>';
+    cat.itens.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item;
+        opt.innerText = item;
+        select.appendChild(opt);
+    });
+    select.onchange = (e) => estado.subcategoria = e.target.value;
 }
 
-function mudarTela(idTela) {
+function mudarTela(id) {
     document.querySelectorAll('.step').forEach(el => el.classList.add('hidden'));
-    const alvo = document.getElementById(idTela);
-    if(alvo) alvo.classList.remove('hidden');
+    document.getElementById(id).classList.remove('hidden');
 }
 
-// Botão Voltar
-window.voltar = (telaDestino) => {
-    if (telaDestino === 'step-campus') {
-        // Se estiver voltando para a escolha de campus, limpa a URL
+window.voltar = (stepDestino) => {
+    // Lógica especial para o botão voltar
+    if (stepDestino === 'step-sede') {
+        // Se Londrina (sem sede) tentar voltar pra sede, joga pro início
+        const campus = DADOS_UNIDADES[estado.campusId];
+        if (!campus.temSedes) {
+            history.pushState({}, '', window.location.pathname);
+            iniciarApp();
+            return;
+        }
+    }
+    if (stepDestino === 'step-campus') {
         history.pushState({}, '', window.location.pathname);
-        identificarCampus();
+        iniciarApp();
     } else {
-        mudarTela(telaDestino);
+        mudarTela(stepDestino);
     }
 };
 
 function gerarDeviceId() {
     let id = localStorage.getItem('zelo_device_id');
-    if (!id) {
-        id = Math.random().toString(36).substring(2, 9);
-        localStorage.setItem('zelo_device_id', id);
-    }
+    if (!id) { id = Math.random().toString(36).substring(2, 9); localStorage.setItem('zelo_device_id', id); }
     estado.deviceId = id;
 }
 
-// ENVIO
+// --- ENVIO ---
 const form = document.getElementById('form-report');
 if(form) {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.querySelector('.btn-enviar');
-        const ambiente = document.getElementById('input-ambiente').value;
+        const complemento = document.getElementById('input-complemento').value;
 
-        if(!estado.subcategoria) { alert("Selecione o problema."); return; }
-        if(!db) { alert("Erro no sistema (Supabase). Recarregue a página."); return; }
+        if(!estado.subcategoria) { alert("Informe o problema."); return; }
+        if(!db) { alert("Erro de conexão."); return; }
 
-        btn.innerText = 'Enviando...';
-        btn.disabled = true;
+        btn.innerText = 'Enviando...'; btn.disabled = true;
+
+        // Monta a descrição completa para o banco
+        const sedeTexto = estado.sedeId ? `(${DADOS_UNIDADES[estado.campusId].sedes[estado.sedeId].nome})` : '';
+        const descricaoCompleta = `${estado.subcategoria} em ${estado.ambienteNome} - ${estado.blocoNome} ${sedeTexto}`;
 
         const dados = {
             device_id: estado.deviceId,
-            ambiente: ambiente || "Não informado",
+            ambiente: complemento || "Não informado", // Ex: Sala 104
             categoria: estado.categoria.nome,
-            descricao: `${estado.subcategoria} - ${estado.bloco.nome} (${estado.campus.nome})`,
+            descricao: descricaoCompleta,
             status: 'pendente'
         };
 
         const { error } = await db.from('ocorrencias').insert([dados]);
-
-        if (error) {
-            alert('Erro: ' + error.message);
-            btn.innerText = 'Tentar Novamente';
-            btn.disabled = false;
-        } else {
-            mudarTela('step-sucesso');
-            btn.innerText = 'ENVIAR';
-            btn.disabled = false;
-        }
+        if (error) { alert('Erro: ' + error.message); btn.disabled = false; btn.innerText = 'Tentar Novamente'; }
+        else { mudarTela('step-sucesso'); btn.disabled = false; btn.innerText = 'ENVIAR'; }
     });
 }
