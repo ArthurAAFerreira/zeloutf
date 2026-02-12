@@ -1,4 +1,4 @@
-// --- CONFIGURAÇÃO (Só Curitiba e Londrina) ---
+// --- CONFIGURAÇÃO ---
 const CAMPI = {
     'ct': { nome: 'Curitiba', id: 'ct' },
     'ld': { nome: 'Londrina', id: 'ld' },
@@ -29,38 +29,41 @@ const CATEGORIAS = {
     }
 };
 
-// --- INICIAR SUPABASE (Correção de Bug) ---
 const SUPABASE_URL = 'https://jkmftolpmchsnxsjxoji.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprbWZ0b2xwbWNoc254c2p4b2ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NjA5MTUsImV4cCI6MjA4NjIzNjkxNX0.WifDxpU_xqWA4Rx-OKSoeGAvPr4RTFK2NpJqC7gc_0M';
 
-// Cria o cliente usando a variável global 'supabase' que vem do HTML
 const db = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-
 let estado = { campus: null, bloco: null, categoria: null, subcategoria: null, deviceId: null };
 
 // --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
     gerarDeviceId();
     identificarCampus();
+
+    // Permite que o botão "Voltar" do navegador funcione
+    window.addEventListener('popstate', () => {
+        identificarCampus();
+    });
 });
 
 function identificarCampus() {
+    // Pega o código da URL (ex: ?c=ct)
     const params = new URLSearchParams(window.location.search);
     const code = params.get('c');
 
-    // Se tiver código válido na URL, usa ele. Se não, usa default.
+    // Verifica se o código é válido
     const campusInfo = (code && CAMPI[code]) ? CAMPI[code] : CAMPI['default'];
     estado.campus = campusInfo;
 
     const titulo = document.getElementById('campus-name');
 
     if (campusInfo.id === 'default') {
-        // TELA DE SELEÇÃO (Curitiba / Londrina)
+        // Modo Seleção
         if(titulo) titulo.innerText = "ZeloUTF";
         renderizarBotoesCampus();
         mudarTela('step-campus');
     } else {
-        // TELA DE BLOCOS (Já sabe o campus)
+        // Modo Câmpus Selecionado
         if(titulo) titulo.innerText = `UTFPR - ${campusInfo.nome}`;
         renderizarBlocos();
         mudarTela('step-bloco');
@@ -69,7 +72,7 @@ function identificarCampus() {
 
 function renderizarBotoesCampus() {
     const container = document.getElementById('lista-campus');
-    if (!container) return; // Se não achar a div, para aqui (evita erro)
+    if (!container) return;
     container.innerHTML = '';
 
     for (const key in CAMPI) {
@@ -78,12 +81,17 @@ function renderizarBotoesCampus() {
         const btn = document.createElement('button');
         btn.className = 'card-btn';
         btn.innerHTML = `<span class="material-icons-round">location_on</span> <span>${c.nome}</span>`;
+
         btn.onclick = () => {
-            estado.campus = c;
-            document.getElementById('campus-name').innerText = `UTFPR - ${c.nome}`;
-            renderizarBlocos();
-            mudarTela('step-bloco');
+            // --- A MÁGICA ACONTECE AQUI ---
+            // Atualiza a URL para ?c=ct sem recarregar a página
+            const novaUrl = window.location.pathname + '?c=' + c.id;
+            history.pushState({id: c.id}, '', novaUrl);
+
+            // Força a atualização da tela
+            identificarCampus();
         };
+
         container.appendChild(btn);
     }
 }
@@ -144,12 +152,21 @@ function mudarTela(idTela) {
     if(alvo) alvo.classList.remove('hidden');
 }
 
-window.voltar = (id) => mudarTela(id);
+// Botão Voltar
+window.voltar = (telaDestino) => {
+    if (telaDestino === 'step-campus') {
+        // Se estiver voltando para a escolha de campus, limpa a URL
+        history.pushState({}, '', window.location.pathname);
+        identificarCampus();
+    } else {
+        mudarTela(telaDestino);
+    }
+};
 
 function gerarDeviceId() {
     let id = localStorage.getItem('zelo_device_id');
     if (!id) {
-        id = Math.random().toString(36).substring(2, 9); // Gera ID simples compatível
+        id = Math.random().toString(36).substring(2, 9);
         localStorage.setItem('zelo_device_id', id);
     }
     estado.deviceId = id;
