@@ -5,13 +5,16 @@ const db = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL,
 
 // --- ESTADO GLOBAL ---
 let estado = {
-    campusId: null,
-    sedeId: null,
-    blocoNome: null,
-    ambienteNome: null,
-    categoria: null,
-    subcategoria: null,
-    tipoRelato: 'Reclamação', // Padrão
+    campusId: null,      // ex: 'ct'
+    campusNome: null,    // ex: 'Curitiba'
+    sedeId: null,        // ex: 'centro'
+    sedeNome: null,      // ex: 'Sede Centro'
+    blocoNome: null,     // ex: 'Bloco A'
+    ambienteNome: null,  // ex: 'Sanitários'
+    categoriaId: null,   // ex: 'limpeza'
+    categoriaNome: null, // ex: 'Limpeza'
+    subcategoria: null,  // ex: 'Falta de Papel'
+    tipoRelato: 'Reclamação',
     deviceId: null
 };
 
@@ -21,13 +24,17 @@ document.addEventListener('DOMContentLoaded', () => {
     window.onpopstate = () => iniciarApp();
 });
 
-// --- CONTROLE DE UI ---
+// --- CONTROLE DE TIPO (Reclamação vs Melhoria) ---
 function selecionarTipo(tipo) {
     estado.tipoRelato = tipo;
-
-    // Atualiza visual dos botões
     document.getElementById('btn-reclamacao').classList.toggle('selected', tipo === 'Reclamação');
     document.getElementById('btn-melhoria').classList.toggle('selected', tipo === 'Melhoria');
+
+    // Recarrega a lista se já estivermos na tela final, pois o filtro de tipo mudou
+    const listaContainer = document.getElementById('container-relatos-antigos');
+    if (listaContainer.innerHTML !== '') {
+        carregarRelatosExistentes();
+    }
 }
 
 function iniciarApp() {
@@ -37,6 +44,7 @@ function iniciarApp() {
     if (code && DADOS_UNIDADES[code]) {
         estado.campusId = code;
         const campus = DADOS_UNIDADES[code];
+        estado.campusNome = campus.nome;
         document.getElementById('campus-name').innerText = `UTFPR - ${campus.nome}`;
 
         if (campus.temSedes) {
@@ -53,7 +61,7 @@ function iniciarApp() {
     }
 }
 
-// --- RENDERIZADORES (Botões) ---
+// --- RENDERIZADORES ---
 function renderizarListaCampus() {
     const container = document.getElementById('lista-campus');
     container.innerHTML = '';
@@ -72,6 +80,7 @@ function renderizarSedes(sedes) {
     for (const key in sedes) {
         criarBotao(container, 'business', sedes[key].nome, () => {
             estado.sedeId = key;
+            estado.sedeNome = sedes[key].nome;
             renderizarBlocos(sedes[key].blocos);
             mudarTela('step-bloco');
         });
@@ -109,10 +118,13 @@ function renderizarCategorias() {
     for (const key in CATEGORIAS) {
         const cat = CATEGORIAS[key];
         criarBotao(container, cat.icone, cat.nome, () => {
-            estado.categoria = cat;
+            estado.categoriaId = key;
+            estado.categoriaNome = cat.nome;
             preencherDetalhes(cat);
             mudarTela('step-detalhes');
-            // Limpa lista de relatos antigos ao entrar na tela
+
+            // Limpa a lista anterior para obrigar o usuário a clicar em "Ver Relatos"
+            // ou carrega automaticamente se preferir: carregarRelatosExistentes();
             document.getElementById('container-relatos-antigos').innerHTML = '';
         });
     }
@@ -160,7 +172,7 @@ window.voltar = (stepDestino) => {
     }
 };
 
-// --- FUNÇÃO: VER RELATOS EXISTENTES ---
+// --- FILTRAGEM DE RELATOS (A Parte Importante) ---
 async function carregarRelatosExistentes() {
     const container = document.getElementById('container-relatos-antigos');
     const btn = document.querySelector('.btn-ver-relatos');
@@ -168,69 +180,71 @@ async function carregarRelatosExistentes() {
     btn.innerText = "Carregando...";
     container.innerHTML = '';
 
-    // Filtra por campus, sede (se houver) e bloco atual
-    // Como salvamos tudo na "descricao", vamos fazer uma busca simples
-    // Numa versão futura, idealmente teríamos colunas separadas para bloco_id
-
-    // Busca os últimos 10 relatos pendentes
-    const { data, error } = await db
+    // Filtra EXATAMENTE pelo caminho atual:
+    // Unidade + Sede (se tiver) + Bloco + Local + Grupo de Problema
+    let query = db
         .from('ocorrencias')
         .select('*')
         .eq('status', 'pendente')
-        .ilike('descricao', `%${estado.blocoNome}%`) // Filtra pelo bloco no texto
+        .eq('unidade', estado.campusNome)
+        .eq('bloco', estado.blocoNome)
+        .eq('local', estado.ambienteNome)
+        .eq('categoria_grupo', estado.categoriaNome) // Ex: Mostra só Limpeza
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(20);
+
+    // Se tiver sede, filtra também (Londrina não tem)
+    if (estado.sedeNome) {
+        query = query.eq('sede', estado.sedeNome);
+    }
+
+    const { data, error } = await query;
 
     btn.innerText = "📋 Atualizar Lista";
 
     if (error) {
-        alert("Erro ao buscar relatos");
+        console.error("Erro ao buscar:", error);
+        container.innerHTML = '<p style="color:red; text-align:center">Erro ao carregar lista.</p>';
         return;
     }
 
-    if (data.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#999;">Nenhum relato recente neste bloco.</p>';
+    if (!data || data.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:#999; margin-top:10px;">Nenhum relato deste tipo neste local.</p>';
         return;
     }
 
     data.forEach(relato => {
         const div = document.createElement('div');
-        const classeTipo = relato.tipo ? relato.tipo.toLowerCase() : 'reclamação';
+        const classeTipo = relato.tipo ? relato.tipo.toLowerCase() : 'reclamação'; // Classe CSS para cor
         const dataFormatada = new Date(relato.created_at).toLocaleDateString('pt-BR');
+
+        // Ícone visual baseado no tipo
+        const iconeTipo = relato.tipo === 'Melhoria' ? '💡' : '⚠';
 
         div.className = `relato-item ${classeTipo}`;
         div.innerHTML = `
             <div class="relato-header">
                 <span>${dataFormatada}</span>
-                <strong>${relato.tipo || 'Relato'}</strong>
+                <strong>${iconeTipo} ${relato.tipo || 'Relato'}</strong>
             </div>
-            <div style="font-weight:bold; margin-bottom:4px;">${relato.categoria}</div>
-            <div>${relato.descricao}</div>
-            ${relato.ambiente ? `<small>Local: ${relato.ambiente}</small>` : ''}
+            <div style="font-weight:bold; margin-bottom:4px;">${relato.problema}</div>
+            <div style="font-size: 0.9em; color: #555;">${relato.descricao_detalhada || ''}</div>
+            ${relato.ambiente ? `<small style="display:block; margin-top:5px; color:#888;">Local exato: ${relato.ambiente}</small>` : ''}
         `;
         container.appendChild(div);
     });
 }
 
-// --- FUNÇÃO: UPLOAD DE FOTO ---
+// --- UPLOAD DE FOTO ---
 async function uploadFoto(arquivo) {
     const nomeArquivo = `${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
-
-    const { data, error } = await db.storage
-        .from('fotos')
-        .upload(nomeArquivo, arquivo);
-
-    if (error) {
-        console.error("Erro upload:", error);
-        return null;
-    }
-
-    // Pega a URL pública
+    const { data, error } = await db.storage.from('fotos').upload(nomeArquivo, arquivo);
+    if (error) return null;
     const { data: publicData } = db.storage.from('fotos').getPublicUrl(nomeArquivo);
     return publicData.publicUrl;
 }
 
-// --- ENVIO DO FORMULÁRIO ---
+// --- ENVIO DO FORMULÁRIO (Salvando nas colunas novas) ---
 const form = document.getElementById('form-report');
 if(form) {
     form.addEventListener('submit', async (e) => {
@@ -245,26 +259,33 @@ if(form) {
 
         btn.innerText = 'Enviando...'; btn.disabled = true;
 
-        // 1. Upload da foto (se houver)
         let fotoUrl = null;
         if (inputFoto.files.length > 0) {
             btn.innerText = 'Enviando foto...';
             fotoUrl = await uploadFoto(inputFoto.files[0]);
         }
 
-        // 2. Monta o objeto
-        const sedeTexto = estado.sedeId ? `(${DADOS_UNIDADES[estado.campusId].sedes[estado.sedeId].nome})` : '';
-        const descricaoResumida = `${estado.subcategoria} - ${estado.blocoNome} ${sedeTexto}`;
-
+        // SALVANDO CADA DADO EM SUA COLUNA
         const dados = {
             device_id: estado.deviceId,
-            tipo: estado.tipoRelato,
-            ambiente: complemento,
-            categoria: estado.categoria.nome,
-            descricao: descricaoResumida,
+            tipo: estado.tipoRelato,          // Reclamação ou Melhoria
+            status: 'pendente',
+
+            // Colunas Granulares (O Segredo do Filtro)
+            unidade: estado.campusNome,       // Curitiba
+            sede: estado.sedeNome,            // Sede Centro
+            bloco: estado.blocoNome,          // Bloco A
+            local: estado.ambienteNome,       // Sanitários
+            categoria_grupo: estado.categoriaNome, // Limpeza
+            problema: estado.subcategoria,    // Falta de Papel
+
+            // Campos descritivos extras
+            ambiente: complemento,            // Sala 104 (campo legado, mas útil)
             descricao_detalhada: descricaoExtra,
             foto_url: fotoUrl,
-            status: 'pendente'
+
+            // Mantendo a descrição antiga por segurança (backward compatibility)
+            descricao: `${estado.subcategoria} em ${estado.ambienteNome} - ${estado.blocoNome}`
         };
 
         const { error } = await db.from('ocorrencias').insert([dados]);
@@ -276,7 +297,7 @@ if(form) {
         } else {
             mudarTela('step-sucesso');
             btn.disabled = false;
-            btn.innerText = 'ENVIAR';
+            btn.innerText = 'ENVIAR RELATO';
         }
     });
 }
