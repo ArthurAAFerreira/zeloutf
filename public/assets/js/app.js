@@ -327,7 +327,10 @@ if(form) {
         const descricaoExtra = document.getElementById('input-descricao').value;
         const inputFoto = document.getElementById('input-foto');
 
-        if(!estado.subcategoria || !complemento) { alert("Preencha o problema e o local."); return; }
+        if(!estado.subcategoria || !complemento || !descricaoExtra.trim()) {
+    alert("Por favor, preencha o subgrupo, o local exato e descreva o problema.");
+    return;
+}
         if(!db) { alert("Erro de conexão."); return; }
 
         btn.innerText = 'Enviando...'; btn.disabled = true;

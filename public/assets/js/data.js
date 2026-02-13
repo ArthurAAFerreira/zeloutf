@@ -12,7 +12,7 @@ const AMBIENTES_PADRAO = [
 const DADOS_UNIDADES = {
     'ct': {
         nome: 'Curitiba',
-        temSedes: true, // Curitiba tem subdivisão (Centro, Neoville, Ecoville)
+        temSedes: true,
         sedes: {
             'centro': {
                 nome: 'Sede Centro',
@@ -45,7 +45,7 @@ const DADOS_UNIDADES = {
     },
     'ld': {
         nome: 'Londrina',
-        temSedes: false, // Londrina não tem sedes, vai direto aos blocos
+        temSedes: false,
         blocos: [
             'Bloco A', 'Bloco B', 'Bloco C', 'Bloco D', 'Bloco E', 'Bloco F', 'Bloco G',
             'Áreas de Acesso', 'Área de Circulação'
@@ -53,26 +53,48 @@ const DADOS_UNIDADES = {
     }
 };
 
-// 3. Categorias de Problemas (Mantive as suas e adicionei TI/Computadores que é útil)
+// 3. Categorias e Subcategorias (Atualizado com a sua nova estrutura)
 const CATEGORIAS = {
-    'limpeza': {
-        nome: 'Limpeza',
-        icone: 'cleaning_services',
-        itens: ['Chão Sujo', 'Lixo Cheio', 'Derramamento', 'Mau Cheiro', 'Falta de Papel/Sabão']
+    'estrutura': {
+        nome: 'Estrutura',
+        icone: 'apartment',
+        itens: [
+            'Iluminação',
+            'Pintura e Acabamento',
+            'Elétrica',
+            'Áreas Verdes',
+            'Acessibilidade',
+            'Climatização (Ar/Ventilação)',
+            'Elevadores',
+            'Extintores e Mangueiras',
+            'Portas, Janelas, Vidros, etc'
+        ]
     },
-    'manutencao': {
-        nome: 'Manutenção',
-        icone: 'build',
-        itens: ['Lâmpada Queimada', 'Tomada com Defeito', 'Porta Quebrada', 'Vazamento', 'Ar Condicionado', 'Lousa/Quadro']
+    'servicos': {
+        nome: 'Serviços',
+        icone: 'engineering',
+        itens: [
+            'Vigilância e Segurança',
+            'Limpeza',
+            'Motorista e Transporte',
+            'Capina e Jardinagem',
+            'Sinalização',
+            'Rede e Internet',
+            'Acadêmico e de Apoio',
+            'Restaurante Universitário',
+            'Portaria',
+            'Outros Serviços'
+        ]
     },
-    'seguranca': {
-        nome: 'Segurança',
-        icone: 'security',
-        itens: ['Porta Aberta Indevida', 'Extintor Vencido', 'Local Escuro', 'Fios Expostos']
-    },
-    'ti': {
-        nome: 'Computadores/TI',
-        icone: 'computer',
-        itens: ['Computador não liga', 'Sem Internet', 'Projetor com defeito', 'Mouse/Teclado']
+    'bens': {
+        nome: 'Bens em Geral',
+        icone: 'chair_alt',
+        itens: [
+            'Dano ou Quebra',
+            'Problema e Forma de Utilização',
+            'Melhorias',
+            'Falta de bens',
+            'Demais Questões'
+        ]
     }
 };
