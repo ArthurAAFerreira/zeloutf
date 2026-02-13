@@ -1,5 +1,180 @@
+// public/assets/js/app.js
+
+// --- CONFIGURAÇÃO SUPABASE ---
+const SUPABASE_URL = 'https://jkmftolpmchsnxsjxoji.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprbWZ0b2xwbWNoc254c2p4b2ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NjA5MTUsImV4cCI6MjA4NjIzNjkxNX0.WifDxpU_xqWA4Rx-OKSoeGAvPr4RTFK2NpJqC7gc_0M';
+const db = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+// --- ESTADO GLOBAL ---
+let estado = {
+    campusId: null,
+    campusNome: null,
+    sedeId: null,
+    sedeNome: null,
+    blocoNome: null,
+    ambienteNome: null,
+    categoriaId: null,
+    categoriaNome: null,
+    subcategoria: null,
+    tipoRelato: 'Reclamação',
+    deviceId: null,
+    adminLogado: null
+};
+
+// Quando o site termina de carregar, ele liga tudo
+document.addEventListener('DOMContentLoaded', () => {
+    gerarDeviceId();
+    iniciarApp();
+    window.onpopstate = () => iniciarApp();
+});
+
+// --- CONTROLE DE TIPO (Reclamação vs Melhoria) ---
+window.selecionarTipo = function(tipo) {
+    estado.tipoRelato = tipo;
+    document.getElementById('btn-reclamacao').classList.toggle('selected', tipo === 'Reclamação');
+    document.getElementById('btn-melhoria').classList.toggle('selected', tipo === 'Melhoria');
+
+    const listaContainer = document.getElementById('container-relatos-antigos');
+    if (listaContainer.innerHTML !== '') {
+        carregarRelatosExistentes();
+    }
+}
+
+function iniciarApp() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('c');
+
+    if (code && DADOS_UNIDADES[code]) {
+        estado.campusId = code;
+        const campus = DADOS_UNIDADES[code];
+        estado.campusNome = campus.nome;
+        document.getElementById('campus-name').innerText = `UTFPR - ${campus.nome}`;
+
+        if (campus.temSedes) {
+            renderizarSedes(campus.sedes);
+            mudarTela('step-sede');
+        } else {
+            renderizarBlocos(campus.blocos);
+            mudarTela('step-bloco');
+        }
+    } else {
+        document.getElementById('campus-name').innerText = "ZeloUTF";
+        renderizarListaCampus();
+        mudarTela('step-campus');
+    }
+}
+
+// --- RENDERIZADORES ---
+function renderizarListaCampus() {
+    const container = document.getElementById('lista-campus');
+    container.innerHTML = '';
+    for (const key in DADOS_UNIDADES) {
+        criarBotao(container, 'location_on', DADOS_UNIDADES[key].nome, () => {
+            const novaUrl = window.location.pathname + '?c=' + key;
+            history.pushState({id: key}, '', novaUrl);
+            iniciarApp();
+        });
+    }
+}
+
+function renderizarSedes(sedes) {
+    const container = document.getElementById('lista-sedes');
+    container.innerHTML = '';
+    for (const key in sedes) {
+        criarBotao(container, 'business', sedes[key].nome, () => {
+            estado.sedeId = key;
+            estado.sedeNome = sedes[key].nome;
+            renderizarBlocos(sedes[key].blocos);
+            mudarTela('step-bloco');
+        });
+    }
+}
+
+function renderizarBlocos(listaBlocos) {
+    const container = document.getElementById('lista-blocos');
+    container.innerHTML = '';
+    listaBlocos.forEach(blocoNome => {
+        criarBotao(container, 'domain', blocoNome, () => {
+            estado.blocoNome = blocoNome;
+            document.getElementById('titulo-bloco-selecionado').innerText = `Onde no ${blocoNome}?`;
+            renderizarAmbientes();
+            mudarTela('step-ambiente');
+        });
+    });
+}
+
+function renderizarAmbientes() {
+    const container = document.getElementById('lista-ambientes');
+    container.innerHTML = '';
+    AMBIENTES_PADRAO.forEach(amb => {
+        criarBotao(container, amb.icone, amb.nome, () => {
+            estado.ambienteNome = amb.nome;
+            renderizarCategorias();
+            mudarTela('step-categoria');
+        });
+    });
+}
+
+function renderizarCategorias() {
+    const container = document.getElementById('lista-categorias');
+    container.innerHTML = '';
+    for (const key in CATEGORIAS) {
+        const cat = CATEGORIAS[key];
+        criarBotao(container, cat.icone, cat.nome, () => {
+            estado.categoriaId = key;
+            estado.categoriaNome = cat.nome;
+            preencherDetalhes(cat);
+            mudarTela('step-detalhes');
+            document.getElementById('container-relatos-antigos').innerHTML = '';
+            document.getElementById('container-relatos-resolvidos').innerHTML = '';
+        });
+    }
+}
+
+function preencherDetalhes(cat) {
+    const select = document.getElementById('input-subcategoria');
+    select.innerHTML = '<option value="">Selecione o problema...</option>';
+    cat.itens.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item;
+        opt.innerText = item;
+        select.appendChild(opt);
+    });
+    select.onchange = (e) => estado.subcategoria = e.target.value;
+}
+
+function criarBotao(container, icone, texto, onClick) {
+    const btn = document.createElement('button');
+    btn.className = 'card-btn';
+    btn.innerHTML = `<span class="material-icons-round">${icone}</span> <span>${texto}</span>`;
+    btn.onclick = onClick;
+    container.appendChild(btn);
+}
+
+window.mudarTela = function(id) {
+    document.querySelectorAll('.step').forEach(el => el.classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+}
+
+window.voltar = function(stepDestino) {
+    if (stepDestino === 'step-sede') {
+        const campus = DADOS_UNIDADES[estado.campusId];
+        if (!campus.temSedes) {
+            history.pushState({}, '', window.location.pathname);
+            iniciarApp();
+            return;
+        }
+    }
+    if (stepDestino === 'step-campus') {
+        history.pushState({}, '', window.location.pathname);
+        iniciarApp();
+    } else {
+        mudarTela(stepDestino);
+    }
+};
+
 // --- FILTRAGEM DE RELATOS E EXIBIÇÃO ---
-async function carregarRelatosExistentes() {
+window.carregarRelatosExistentes = async function() {
     const containerAbertos = document.getElementById('container-relatos-antigos');
     const containerResolvidos = document.getElementById('container-relatos-resolvidos');
     const btn = document.querySelector('.btn-ver-relatos');
@@ -82,7 +257,6 @@ function criarCardRelato(relato, isAberto) {
 
     // Se estiver aberto, mostra os botões de ação
     if (isAberto) {
-        // Objeto em string para passar pro modal
         const dadosJson = encodeURIComponent(JSON.stringify(relato));
         conteudo += `
             <div class="acoes-linha-1">
@@ -120,7 +294,7 @@ window.reforcarRelato = async function(idRelato, reforcosAtuais) {
     else { localStorage.setItem(storageKey, 'true'); carregarRelatosExistentes(); }
 }
 
-// --- FUNÇÃO: INFORMAR RESOLUÇÃO (Substituto do E-mail) ---
+// --- FUNÇÃO: INFORMAR RESOLUÇÃO ---
 window.informarResolucao = async function(idRelato) {
     const email = prompt("Identificamos que este problema já foi resolvido? Informe seu e-mail institucional (@utfpr.edu.br) para a administração verificar:");
     if (!email) return;
@@ -138,13 +312,10 @@ window.informarResolucao = async function(idRelato) {
 }
 
 // --- FUNÇÕES: MODAL DE ADMINISTRAÇÃO ---
-// (As senhas agora são carregadas externamente pelo arquivo senhas.js)
-
 window.abrirModalAdmin = function(dadosUrlCoded) {
     const senha = prompt("Digite a Senha Mestre para gerenciar:");
     if (!senha) return;
 
-    // Proteção caso o arquivo senhas.js não tenha carregado
     if (typeof SENHAS_MESTRE === 'undefined') {
         alert("Erro no sistema: Arquivo de senhas não encontrado.");
         return;
@@ -155,7 +326,6 @@ window.abrirModalAdmin = function(dadosUrlCoded) {
 
     const relato = JSON.parse(decodeURIComponent(dadosUrlCoded));
 
-    // Preenche o Modal
     document.getElementById('admin-uuid').value = relato.id;
     document.getElementById('admin-id-relato').innerText = relato.id_curto ? `#${relato.id_curto}` : '';
     document.getElementById('admin-criado').innerText = new Date(relato.created_at).toLocaleString('pt-BR');
@@ -165,14 +335,11 @@ window.abrirModalAdmin = function(dadosUrlCoded) {
     document.getElementById('admin-problema').innerText = relato.problema;
     document.getElementById('admin-descricao').innerText = relato.descricao_detalhada || 'Sem descrição';
 
-    // Campos Editáveis
     document.getElementById('admin-complemento').value = relato.complemento_admin || '';
     document.getElementById('admin-concluido').checked = false;
-    document.getElementById('admin-foto').value = ''; // Limpa o input de foto
+    document.getElementById('admin-foto').value = '';
 
-    // Salva na memória quem está logado temporariamente
     estado.adminLogado = usuarioAdmin;
-
     document.getElementById('modal-admin').classList.remove('hidden');
 }
 
@@ -190,14 +357,12 @@ window.salvarGerenciamento = async function() {
 
     btn.innerText = "Salvando..."; btn.disabled = true;
 
-    // 1. Upload da Foto de Conclusão (se houver)
     let fotoConclusao = null;
     if (inputFoto.files.length > 0) {
         btn.innerText = "Enviando foto...";
         fotoConclusao = await uploadFoto(inputFoto.files[0]);
     }
 
-    // 2. Monta os dados de atualização
     const dadosUpdate = {
         complemento_admin: complemento,
         gerenciado_por: estado.adminLogado
@@ -210,7 +375,6 @@ window.salvarGerenciamento = async function() {
         dadosUpdate.resolvido_em = new Date().toISOString();
     }
 
-    // 3. Salva no Supabase
     const { error } = await db.from('ocorrencias').update(dadosUpdate).eq('id', id);
 
     if (error) {
@@ -220,7 +384,7 @@ window.salvarGerenciamento = async function() {
         alert("Relato atualizado com sucesso!");
         btn.innerText = "💾 SALVAR ALTERAÇÕES"; btn.disabled = false;
         fecharModalAdmin();
-        carregarRelatosExistentes(); // Atualiza as listas (pode mover o relato pros Resolvidos)
+        carregarRelatosExistentes();
     }
 }
 
@@ -271,7 +435,7 @@ if(form) {
             problema: estado.subcategoria,
             ambiente: complemento,
             descricao_detalhada: descricaoExtra,
-            identificacao_usuario: identificacao, // Novo
+            identificacao_usuario: identificacao,
             foto_url: fotoUrl,
             descricao: descricaoResumida
         };
