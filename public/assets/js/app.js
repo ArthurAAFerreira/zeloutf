@@ -172,7 +172,7 @@ window.voltar = (stepDestino) => {
     }
 };
 
-// --- FILTRAGEM DE RELATOS (A Parte Importante) ---
+// --- FILTRAGEM E EXIBIÇÃO DE RELATOS ---
 async function carregarRelatosExistentes() {
     const container = document.getElementById('container-relatos-antigos');
     const btn = document.querySelector('.btn-ver-relatos');
@@ -180,8 +180,6 @@ async function carregarRelatosExistentes() {
     btn.innerText = "Carregando...";
     container.innerHTML = '';
 
-    // Filtra EXATAMENTE pelo caminho atual:
-    // Unidade + Sede (se tiver) + Bloco + Local + Grupo de Problema
     let query = db
         .from('ocorrencias')
         .select('*')
@@ -189,37 +187,36 @@ async function carregarRelatosExistentes() {
         .eq('unidade', estado.campusNome)
         .eq('bloco', estado.blocoNome)
         .eq('local', estado.ambienteNome)
-        .eq('categoria_grupo', estado.categoriaNome) // Ex: Mostra só Limpeza
+        .eq('categoria_grupo', estado.categoriaNome)
+        .order('reforcos', { ascending: false }) // Ordena pelos que tem mais likes primeiro
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(15);
 
-    // Se tiver sede, filtra também (Londrina não tem)
     if (estado.sedeNome) {
         query = query.eq('sede', estado.sedeNome);
     }
 
     const { data, error } = await query;
-
     btn.innerText = "📋 Atualizar Lista";
 
     if (error) {
-        console.error("Erro ao buscar:", error);
         container.innerHTML = '<p style="color:red; text-align:center">Erro ao carregar lista.</p>';
         return;
     }
 
     if (!data || data.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#999; margin-top:10px;">Nenhum relato deste tipo neste local.</p>';
+        container.innerHTML = '<p style="text-align:center; color:#999; margin-top:10px;">Nenhum relato pendente aqui.</p>';
         return;
     }
 
     data.forEach(relato => {
         const div = document.createElement('div');
-        const classeTipo = relato.tipo ? relato.tipo.toLowerCase() : 'reclamação'; // Classe CSS para cor
+        const classeTipo = relato.tipo ? relato.tipo.toLowerCase() : 'reclamação';
         const dataFormatada = new Date(relato.created_at).toLocaleDateString('pt-BR');
-
-        // Ícone visual baseado no tipo
         const iconeTipo = relato.tipo === 'Melhoria' ? '💡' : '⚠';
+
+        // Quantidade de likes (se for nulo, é 0)
+        const qtdReforcos = relato.reforcos || 0;
 
         div.className = `relato-item ${classeTipo}`;
         div.innerHTML = `
@@ -230,9 +227,85 @@ async function carregarRelatosExistentes() {
             <div style="font-weight:bold; margin-bottom:4px;">${relato.problema}</div>
             <div style="font-size: 0.9em; color: #555;">${relato.descricao_detalhada || ''}</div>
             ${relato.ambiente ? `<small style="display:block; margin-top:5px; color:#888;">Local exato: ${relato.ambiente}</small>` : ''}
+            
+            <div class="acoes-relato">
+                <button class="btn-acao reforco" onclick="reforcarRelato('${relato.id}', ${qtdReforcos})">
+                    👍 Reforçar (${qtdReforcos})
+                </button>
+                <button class="btn-acao resolver" onclick="resolverRelato('${relato.id}')">
+                    ✅ Resolvido
+                </button>
+            </div>
         `;
         container.appendChild(div);
     });
+}
+
+// --- FUNÇÃO: DAR LIKE / REFORÇAR ---
+window.reforcarRelato = async function(idRelato, reforcosAtuais) {
+    // Verificação simples usando localStorage para evitar que o cara clique 50 vezes
+    const storageKey = `upvote_${idRelato}`;
+    if (localStorage.getItem(storageKey)) {
+        alert("Você já reforçou este relato!");
+        return;
+    }
+
+    if(!db) return;
+
+    // Atualiza no banco: soma +1 no valor atual
+    const { error } = await db
+        .from('ocorrencias')
+        .update({ reforcos: reforcosAtuais + 1 })
+        .eq('id', idRelato);
+
+    if (error) {
+        alert("Erro ao reforçar: " + error.message);
+    } else {
+        localStorage.setItem(storageKey, 'true'); // Marca que este dispositivo já votou
+        carregarRelatosExistentes(); // Recarrega a lista para mostrar o novo número
+    }
+}
+
+// --- FUNÇÃO: MARCAR COMO RESOLVIDO ---
+window.resolverRelato = async function(idRelato) {
+    const input = prompt("Para marcar como resolvido, digite a SENHA MESTRE ou o seu E-MAIL INSTITUCIONAL (@utfpr.edu.br):");
+
+    if (!input) return; // Cancelou
+
+    let resolvido_por = '';
+
+    // 1. Verifica Senha Mestre (Troque 'senha123' pela senha que você quiser)
+    if (input === 'senha123') {
+        resolvido_por = 'Admin ZeloUTF';
+    }
+    // 2. Verifica E-mail válido
+    else if (input.includes('@') && (input.endsWith('.edu.br') || input.endsWith('.gov.br'))) {
+        resolvido_por = input.trim();
+        alert(`Obrigado! A resolução será registrada no e-mail: ${resolvido_por}`);
+    }
+    // 3. Falhou
+    else {
+        alert("Acesso Negado: Senha incorreta ou e-mail inválido. Use um e-mail institucional.");
+        return;
+    }
+
+    if(!db) return;
+
+    const { error } = await db
+        .from('ocorrencias')
+        .update({
+            status: 'resolvido',
+            resolvido_por: resolvido_por,
+            resolvido_em: new Date().toISOString()
+        })
+        .eq('id', idRelato);
+
+    if (error) {
+        alert("Erro ao atualizar: " + error.message);
+    } else {
+        alert("Sucesso! O problema foi marcado como resolvido e retirado da lista.");
+        carregarRelatosExistentes(); // Recarrega a lista
+    }
 }
 
 // --- UPLOAD DE FOTO ---
