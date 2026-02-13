@@ -1,310 +1,226 @@
-// --- CONFIGURAÇÃO SUPABASE ---
-const SUPABASE_URL = 'https://jkmftolpmchsnxsjxoji.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImprbWZ0b2xwbWNoc254c2p4b2ppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA2NjA5MTUsImV4cCI6MjA4NjIzNjkxNX0.WifDxpU_xqWA4Rx-OKSoeGAvPr4RTFK2NpJqC7gc_0M';
-const db = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-
-// --- ESTADO GLOBAL ---
-let estado = {
-    campusId: null,      // ex: 'ct'
-    campusNome: null,    // ex: 'Curitiba'
-    sedeId: null,        // ex: 'centro'
-    sedeNome: null,      // ex: 'Sede Centro'
-    blocoNome: null,     // ex: 'Bloco A'
-    ambienteNome: null,  // ex: 'Sanitários'
-    categoriaId: null,   // ex: 'limpeza'
-    categoriaNome: null, // ex: 'Limpeza'
-    subcategoria: null,  // ex: 'Falta de Papel'
-    tipoRelato: 'Reclamação',
-    deviceId: null
-};
-
-document.addEventListener('DOMContentLoaded', () => {
-    gerarDeviceId();
-    iniciarApp();
-    window.onpopstate = () => iniciarApp();
-});
-
-// --- CONTROLE DE TIPO (Reclamação vs Melhoria) ---
-function selecionarTipo(tipo) {
-    estado.tipoRelato = tipo;
-    document.getElementById('btn-reclamacao').classList.toggle('selected', tipo === 'Reclamação');
-    document.getElementById('btn-melhoria').classList.toggle('selected', tipo === 'Melhoria');
-
-    // Recarrega a lista se já estivermos na tela final, pois o filtro de tipo mudou
-    const listaContainer = document.getElementById('container-relatos-antigos');
-    if (listaContainer.innerHTML !== '') {
-        carregarRelatosExistentes();
-    }
-}
-
-function iniciarApp() {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('c');
-
-    if (code && DADOS_UNIDADES[code]) {
-        estado.campusId = code;
-        const campus = DADOS_UNIDADES[code];
-        estado.campusNome = campus.nome;
-        document.getElementById('campus-name').innerText = `UTFPR - ${campus.nome}`;
-
-        if (campus.temSedes) {
-            renderizarSedes(campus.sedes);
-            mudarTela('step-sede');
-        } else {
-            renderizarBlocos(campus.blocos);
-            mudarTela('step-bloco');
-        }
-    } else {
-        document.getElementById('campus-name').innerText = "ZeloUTF";
-        renderizarListaCampus();
-        mudarTela('step-campus');
-    }
-}
-
-// --- RENDERIZADORES ---
-function renderizarListaCampus() {
-    const container = document.getElementById('lista-campus');
-    container.innerHTML = '';
-    for (const key in DADOS_UNIDADES) {
-        criarBotao(container, 'location_on', DADOS_UNIDADES[key].nome, () => {
-            const novaUrl = window.location.pathname + '?c=' + key;
-            history.pushState({id: key}, '', novaUrl);
-            iniciarApp();
-        });
-    }
-}
-
-function renderizarSedes(sedes) {
-    const container = document.getElementById('lista-sedes');
-    container.innerHTML = '';
-    for (const key in sedes) {
-        criarBotao(container, 'business', sedes[key].nome, () => {
-            estado.sedeId = key;
-            estado.sedeNome = sedes[key].nome;
-            renderizarBlocos(sedes[key].blocos);
-            mudarTela('step-bloco');
-        });
-    }
-}
-
-function renderizarBlocos(listaBlocos) {
-    const container = document.getElementById('lista-blocos');
-    container.innerHTML = '';
-    listaBlocos.forEach(blocoNome => {
-        criarBotao(container, 'domain', blocoNome, () => {
-            estado.blocoNome = blocoNome;
-            document.getElementById('titulo-bloco-selecionado').innerText = `Onde no ${blocoNome}?`;
-            renderizarAmbientes();
-            mudarTela('step-ambiente');
-        });
-    });
-}
-
-function renderizarAmbientes() {
-    const container = document.getElementById('lista-ambientes');
-    container.innerHTML = '';
-    AMBIENTES_PADRAO.forEach(amb => {
-        criarBotao(container, amb.icone, amb.nome, () => {
-            estado.ambienteNome = amb.nome;
-            renderizarCategorias();
-            mudarTela('step-categoria');
-        });
-    });
-}
-
-function renderizarCategorias() {
-    const container = document.getElementById('lista-categorias');
-    container.innerHTML = '';
-    for (const key in CATEGORIAS) {
-        const cat = CATEGORIAS[key];
-        criarBotao(container, cat.icone, cat.nome, () => {
-            estado.categoriaId = key;
-            estado.categoriaNome = cat.nome;
-            preencherDetalhes(cat);
-            mudarTela('step-detalhes');
-
-            // Limpa a lista anterior para obrigar o usuário a clicar em "Ver Relatos"
-            // ou carrega automaticamente se preferir: carregarRelatosExistentes();
-            document.getElementById('container-relatos-antigos').innerHTML = '';
-        });
-    }
-}
-
-function preencherDetalhes(cat) {
-    const select = document.getElementById('input-subcategoria');
-    select.innerHTML = '<option value="">Selecione o problema...</option>';
-    cat.itens.forEach(item => {
-        const opt = document.createElement('option');
-        opt.value = item;
-        opt.innerText = item;
-        select.appendChild(opt);
-    });
-    select.onchange = (e) => estado.subcategoria = e.target.value;
-}
-
-function criarBotao(container, icone, texto, onClick) {
-    const btn = document.createElement('button');
-    btn.className = 'card-btn';
-    btn.innerHTML = `<span class="material-icons-round">${icone}</span> <span>${texto}</span>`;
-    btn.onclick = onClick;
-    container.appendChild(btn);
-}
-
-function mudarTela(id) {
-    document.querySelectorAll('.step').forEach(el => el.classList.add('hidden'));
-    document.getElementById(id).classList.remove('hidden');
-}
-
-window.voltar = (stepDestino) => {
-    if (stepDestino === 'step-sede') {
-        const campus = DADOS_UNIDADES[estado.campusId];
-        if (!campus.temSedes) {
-            history.pushState({}, '', window.location.pathname);
-            iniciarApp();
-            return;
-        }
-    }
-    if (stepDestino === 'step-campus') {
-        history.pushState({}, '', window.location.pathname);
-        iniciarApp();
-    } else {
-        mudarTela(stepDestino);
-    }
-};
-
-// --- FILTRAGEM E EXIBIÇÃO DE RELATOS ---
+// --- FILTRAGEM DE RELATOS E EXIBIÇÃO ---
 async function carregarRelatosExistentes() {
-    const container = document.getElementById('container-relatos-antigos');
+    const containerAbertos = document.getElementById('container-relatos-antigos');
+    const containerResolvidos = document.getElementById('container-relatos-resolvidos');
     const btn = document.querySelector('.btn-ver-relatos');
 
     btn.innerText = "Carregando...";
-    container.innerHTML = '';
+    containerAbertos.innerHTML = '';
+    containerResolvidos.innerHTML = '';
 
-    let query = db
-        .from('ocorrencias')
-        .select('*')
+    // 1. Busca os Abertos
+    let queryAbertos = db.from('ocorrencias').select('*')
         .eq('status', 'pendente')
-        .eq('unidade', estado.campusNome)
-        .eq('bloco', estado.blocoNome)
-        .eq('local', estado.ambienteNome)
-        .eq('categoria_grupo', estado.categoriaNome)
-        .order('reforcos', { ascending: false }) // Ordena pelos que tem mais likes primeiro
-        .order('created_at', { ascending: false })
-        .limit(15);
+        .eq('unidade', estado.campusNome).eq('bloco', estado.blocoNome)
+        .eq('local', estado.ambienteNome).eq('categoria_grupo', estado.categoriaNome)
+        .order('reforcos', { ascending: false }).order('created_at', { ascending: false }).limit(15);
 
-    if (estado.sedeNome) {
-        query = query.eq('sede', estado.sedeNome);
+    if (estado.sedeNome) queryAbertos = queryAbertos.eq('sede', estado.sedeNome);
+
+    // 2. Busca os Resolvidos (Últimos 7 dias)
+    const seteDiasAtras = new Date();
+    seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
+
+    let queryResolvidos = db.from('ocorrencias').select('*')
+        .eq('status', 'resolvido')
+        .gte('resolvido_em', seteDiasAtras.toISOString())
+        .eq('unidade', estado.campusNome).eq('bloco', estado.blocoNome)
+        .eq('local', estado.ambienteNome).eq('categoria_grupo', estado.categoriaNome)
+        .order('resolvido_em', { ascending: false }).limit(10);
+
+    if (estado.sedeNome) queryResolvidos = queryResolvidos.eq('sede', estado.sedeNome);
+
+    // Executa as buscas
+    const [resAbertos, resResolvidos] = await Promise.all([queryAbertos, queryResolvidos]);
+
+    btn.innerText = "📋 Relatos Abertos neste Local";
+
+    // --- RENDERIZA ABERTOS ---
+    if (resAbertos.error) {
+        containerAbertos.innerHTML = '<p style="color:red;">Erro ao carregar lista.</p>';
+    } else if (resAbertos.data.length === 0) {
+        containerAbertos.innerHTML = '<p style="text-align:center; color:#999;">Nenhum relato pendente aqui.</p>';
+    } else {
+        resAbertos.data.forEach(r => containerAbertos.appendChild(criarCardRelato(r, true)));
     }
 
-    const { data, error } = await query;
-    btn.innerText = "📋 Atualizar Lista";
+    // --- RENDERIZA RESOLVIDOS ---
+    if (!resResolvidos.error && resResolvidos.data.length > 0) {
+        resResolvidos.data.forEach(r => containerResolvidos.appendChild(criarCardRelato(r, false)));
+    } else {
+        containerResolvidos.innerHTML = '<p style="text-align:center; font-size: 0.8rem; color:#ccc;">Nenhum relato recente concluído.</p>';
+    }
+}
 
-    if (error) {
-        container.innerHTML = '<p style="color:red; text-align:center">Erro ao carregar lista.</p>';
-        return;
+// Construtor do HTML do Relato
+function criarCardRelato(relato, isAberto) {
+    const div = document.createElement('div');
+    const classeTipo = relato.tipo ? relato.tipo.toLowerCase() : 'reclamação';
+    const dataCriacao = new Date(relato.created_at).toLocaleDateString('pt-BR');
+    const iconeTipo = relato.tipo === 'Melhoria' ? '💡' : '⚠';
+    const numId = relato.id_curto ? `#${relato.id_curto}` : '';
+    const qtdReforcos = relato.reforcos || 0;
+
+    // Foto
+    let imgHtml = '';
+    if (relato.foto_url) {
+        imgHtml = `<img src="${relato.foto_url}" class="foto-miniatura" onclick="window.open('${relato.foto_url}', '_blank')">`;
     }
 
-    if (!data || data.length === 0) {
-        container.innerHTML = '<p style="text-align:center; color:#999; margin-top:10px;">Nenhum relato pendente aqui.</p>';
-        return;
-    }
+    div.className = `relato-item ${isAberto ? classeTipo : 'resolvido'}`;
 
-    data.forEach(relato => {
-        const div = document.createElement('div');
-        const classeTipo = relato.tipo ? relato.tipo.toLowerCase() : 'reclamação';
-        const dataFormatada = new Date(relato.created_at).toLocaleDateString('pt-BR');
-        const iconeTipo = relato.tipo === 'Melhoria' ? '💡' : '⚠';
+    let conteudo = `
+        <div class="relato-header">
+            <span>${dataCriacao} <span class="relato-id">${numId}</span></span>
+            <strong>${iconeTipo} ${relato.tipo || 'Relato'}</strong>
+        </div>
+        <div style="font-weight:bold; margin-bottom:4px;">${relato.problema}</div>
+        <div style="font-size: 0.9em; color: #555;">${relato.descricao_detalhada || ''}</div>
+        ${relato.ambiente ? `<small style="display:block; margin-top:5px; color:#888;">Local: ${relato.ambiente}</small>` : ''}
+        ${imgHtml}
+    `;
 
-        // Quantidade de likes (se for nulo, é 0)
-        const qtdReforcos = relato.reforcos || 0;
-
-        div.className = `relato-item ${classeTipo}`;
-        div.innerHTML = `
-            <div class="relato-header">
-                <span>${dataFormatada}</span>
-                <strong>${iconeTipo} ${relato.tipo || 'Relato'}</strong>
+    // Se estiver aberto, mostra os botões de ação
+    if (isAberto) {
+        // Objeto em string para passar pro modal
+        const dadosJson = encodeURIComponent(JSON.stringify(relato));
+        conteudo += `
+            <div class="acoes-linha-1">
+                <button class="btn-acao reforco" onclick="reforcarRelato('${relato.id}', ${qtdReforcos})">👍 Reforçar (${qtdReforcos})</button>
+                <button class="btn-acao gerenciar" onclick="abrirModalAdmin('${dadosJson}')">⚙️ Gerenciar</button>
             </div>
-            <div style="font-weight:bold; margin-bottom:4px;">${relato.problema}</div>
-            <div style="font-size: 0.9em; color: #555;">${relato.descricao_detalhada || ''}</div>
-            ${relato.ambiente ? `<small style="display:block; margin-top:5px; color:#888;">Local exato: ${relato.ambiente}</small>` : ''}
-            
-            <div class="acoes-relato">
-                <button class="btn-acao reforco" onclick="reforcarRelato('${relato.id}', ${qtdReforcos})">
-                    👍 Reforçar (${qtdReforcos})
-                </button>
-                <button class="btn-acao resolver" onclick="resolverRelato('${relato.id}')">
-                    ✅ Resolvido
-                </button>
+            <div class="acoes-linha-2">
+                <button class="btn-acao informar" onclick="informarResolucao('${relato.id}')">📢 Informar Resolução</button>
             </div>
         `;
-        container.appendChild(div);
-    });
+    } else {
+        const dataConclusao = new Date(relato.resolvido_em).toLocaleDateString('pt-BR');
+        conteudo += `<div style="margin-top:10px; padding:8px; background:#e8f5e9; color:#2e7d32; border-radius:6px; font-size:0.85rem;">
+            ✅ Resolvido em ${dataConclusao} ${relato.gerenciado_por ? `por ${relato.gerenciado_por}` : ''}
+            ${relato.complemento_admin ? `<br><em>Nota: ${relato.complemento_admin}</em>` : ''}
+        </div>`;
+    }
+
+    div.innerHTML = conteudo;
+    return div;
 }
 
-// --- FUNÇÃO: DAR LIKE / REFORÇAR ---
+// --- FUNÇÃO: REFORÇAR ---
 window.reforcarRelato = async function(idRelato, reforcosAtuais) {
-    // Verificação simples usando localStorage para evitar que o cara clique 50 vezes
     const storageKey = `upvote_${idRelato}`;
-    if (localStorage.getItem(storageKey)) {
-        alert("Você já reforçou este relato!");
-        return;
-    }
-
+    if (localStorage.getItem(storageKey)) { alert("Você já reforçou este relato!"); return; }
     if(!db) return;
 
-    // Atualiza no banco: soma +1 no valor atual
-    const { error } = await db
-        .from('ocorrencias')
-        .update({ reforcos: reforcosAtuais + 1 })
+    const agora = new Date().toISOString();
+    const { error } = await db.from('ocorrencias')
+        .update({ reforcos: reforcosAtuais + 1, ultimo_reforco_em: agora })
         .eq('id', idRelato);
 
-    if (error) {
-        alert("Erro ao reforçar: " + error.message);
-    } else {
-        localStorage.setItem(storageKey, 'true'); // Marca que este dispositivo já votou
-        carregarRelatosExistentes(); // Recarrega a lista para mostrar o novo número
-    }
+    if (error) alert("Erro ao reforçar: " + error.message);
+    else { localStorage.setItem(storageKey, 'true'); carregarRelatosExistentes(); }
 }
 
-// --- FUNÇÃO: MARCAR COMO RESOLVIDO ---
-window.resolverRelato = async function(idRelato) {
-    const input = prompt("Para marcar como resolvido, digite a SENHA MESTRE ou o seu E-MAIL INSTITUCIONAL (@utfpr.edu.br):");
+// --- FUNÇÃO: INFORMAR RESOLUÇÃO (Substituto do E-mail) ---
+window.informarResolucao = async function(idRelato) {
+    const email = prompt("Identificamos que este problema já foi resolvido? Informe seu e-mail institucional (@utfpr.edu.br) para a administração verificar:");
+    if (!email) return;
 
-    if (!input) return; // Cancelou
-
-    let resolvido_por = '';
-
-    // 1. Verifica Senha Mestre (Troque 'senha123' pela senha que você quiser)
-    if (input === 'senha123') {
-        resolvido_por = 'Admin ZeloUTF';
+    if (!email.includes('@utfpr.edu.br')) {
+        alert("Por favor, use um e-mail válido da UTFPR."); return;
     }
-    // 2. Verifica E-mail válido
-    else if (input.includes('@') && (input.endsWith('.edu.br') || input.endsWith('.gov.br'))) {
-        resolvido_por = input.trim();
-        alert(`Obrigado! A resolução será registrada no e-mail: ${resolvido_por}`);
-    }
-    // 3. Falhou
-    else {
-        alert("Acesso Negado: Senha incorreta ou e-mail inválido. Use um e-mail institucional.");
+
+    const { error } = await db.from('ocorrencias')
+        .update({ solicitacao_resolucao_por: email.trim() })
+        .eq('id', idRelato);
+
+    if (error) alert("Erro: " + error.message);
+    else alert("Obrigado! A administração foi notificada para baixar este chamado.");
+}
+
+// --- FUNÇÕES: MODAL DE ADMINISTRAÇÃO ---
+// (As senhas agora são carregadas externamente pelo arquivo senhas.js)
+
+window.abrirModalAdmin = function(dadosUrlCoded) {
+    const senha = prompt("Digite a Senha Mestre para gerenciar:");
+    if (!senha) return;
+
+    // Proteção caso o arquivo senhas.js não tenha carregado
+    if (typeof SENHAS_MESTRE === 'undefined') {
+        alert("Erro no sistema: Arquivo de senhas não encontrado.");
         return;
     }
 
-    if(!db) return;
+    const usuarioAdmin = SENHAS_MESTRE[senha];
+    if (!usuarioAdmin) { alert("Senha incorreta ou não autorizada!"); return; }
 
-    const { error } = await db
-        .from('ocorrencias')
-        .update({
-            status: 'resolvido',
-            resolvido_por: resolvido_por,
-            resolvido_em: new Date().toISOString()
-        })
-        .eq('id', idRelato);
+    const relato = JSON.parse(decodeURIComponent(dadosUrlCoded));
+
+    // Preenche o Modal
+    document.getElementById('admin-uuid').value = relato.id;
+    document.getElementById('admin-id-relato').innerText = relato.id_curto ? `#${relato.id_curto}` : '';
+    document.getElementById('admin-criado').innerText = new Date(relato.created_at).toLocaleString('pt-BR');
+    document.getElementById('admin-reforco').innerText = relato.ultimo_reforco_em ? new Date(relato.ultimo_reforco_em).toLocaleDateString('pt-BR') : 'Nunca';
+    document.getElementById('admin-qtd-reforco').innerText = relato.reforcos || 0;
+    document.getElementById('admin-local').innerText = `${relato.bloco} - ${relato.ambiente}`;
+    document.getElementById('admin-problema').innerText = relato.problema;
+    document.getElementById('admin-descricao').innerText = relato.descricao_detalhada || 'Sem descrição';
+
+    // Campos Editáveis
+    document.getElementById('admin-complemento').value = relato.complemento_admin || '';
+    document.getElementById('admin-concluido').checked = false;
+    document.getElementById('admin-foto').value = ''; // Limpa o input de foto
+
+    // Salva na memória quem está logado temporariamente
+    estado.adminLogado = usuarioAdmin;
+
+    document.getElementById('modal-admin').classList.remove('hidden');
+}
+
+window.fecharModalAdmin = function() {
+    document.getElementById('modal-admin').classList.add('hidden');
+    estado.adminLogado = null;
+}
+
+window.salvarGerenciamento = async function() {
+    const id = document.getElementById('admin-uuid').value;
+    const complemento = document.getElementById('admin-complemento').value;
+    const isConcluido = document.getElementById('admin-concluido').checked;
+    const inputFoto = document.getElementById('admin-foto');
+    const btn = document.querySelector('#modal-admin .btn-enviar');
+
+    btn.innerText = "Salvando..."; btn.disabled = true;
+
+    // 1. Upload da Foto de Conclusão (se houver)
+    let fotoConclusao = null;
+    if (inputFoto.files.length > 0) {
+        btn.innerText = "Enviando foto...";
+        fotoConclusao = await uploadFoto(inputFoto.files[0]);
+    }
+
+    // 2. Monta os dados de atualização
+    const dadosUpdate = {
+        complemento_admin: complemento,
+        gerenciado_por: estado.adminLogado
+    };
+
+    if (fotoConclusao) dadosUpdate.foto_conclusao_url = fotoConclusao;
+
+    if (isConcluido) {
+        dadosUpdate.status = 'resolvido';
+        dadosUpdate.resolvido_em = new Date().toISOString();
+    }
+
+    // 3. Salva no Supabase
+    const { error } = await db.from('ocorrencias').update(dadosUpdate).eq('id', id);
 
     if (error) {
-        alert("Erro ao atualizar: " + error.message);
+        alert("Erro ao salvar: " + error.message);
+        btn.innerText = "💾 SALVAR ALTERAÇÕES"; btn.disabled = false;
     } else {
-        alert("Sucesso! O problema foi marcado como resolvido e retirado da lista.");
-        carregarRelatosExistentes(); // Recarrega a lista
+        alert("Relato atualizado com sucesso!");
+        btn.innerText = "💾 SALVAR ALTERAÇÕES"; btn.disabled = false;
+        fecharModalAdmin();
+        carregarRelatosExistentes(); // Atualiza as listas (pode mover o relato pros Resolvidos)
     }
 }
 
@@ -317,7 +233,7 @@ async function uploadFoto(arquivo) {
     return publicData.publicUrl;
 }
 
-// --- ENVIO DO FORMULÁRIO (Salvando nas colunas novas) ---
+// --- ENVIO DO FORMULÁRIO PRINCIPAL ---
 const form = document.getElementById('form-report');
 if(form) {
     form.addEventListener('submit', async (e) => {
@@ -325,13 +241,12 @@ if(form) {
         const btn = document.querySelector('.btn-enviar');
         const complemento = document.getElementById('input-complemento').value;
         const descricaoExtra = document.getElementById('input-descricao').value;
+        const identificacao = document.getElementById('input-identidade').value;
         const inputFoto = document.getElementById('input-foto');
 
         if(!estado.subcategoria || !complemento || !descricaoExtra.trim()) {
-    alert("Por favor, preencha o subgrupo, o local exato e descreva o problema.");
-    return;
-}
-        if(!db) { alert("Erro de conexão."); return; }
+            alert("Preencha o problema, o local exato e a descrição."); return;
+        }
 
         btn.innerText = 'Enviando...'; btn.disabled = true;
 
@@ -341,39 +256,34 @@ if(form) {
             fotoUrl = await uploadFoto(inputFoto.files[0]);
         }
 
-        // SALVANDO CADA DADO EM SUA COLUNA
+        const sedeTexto = estado.sedeId ? `(${DADOS_UNIDADES[estado.campusId].sedes[estado.sedeId].nome})` : '';
+        const descricaoResumida = `${estado.subcategoria} - ${estado.blocoNome} ${sedeTexto}`;
+
         const dados = {
             device_id: estado.deviceId,
-            tipo: estado.tipoRelato,          // Reclamação ou Melhoria
+            tipo: estado.tipoRelato,
             status: 'pendente',
-
-            // Colunas Granulares (O Segredo do Filtro)
-            unidade: estado.campusNome,       // Curitiba
-            sede: estado.sedeNome,            // Sede Centro
-            bloco: estado.blocoNome,          // Bloco A
-            local: estado.ambienteNome,       // Sanitários
-            categoria_grupo: estado.categoriaNome, // Limpeza
-            problema: estado.subcategoria,    // Falta de Papel
-
-            // Campos descritivos extras
-            ambiente: complemento,            // Sala 104 (campo legado, mas útil)
+            unidade: estado.campusNome,
+            sede: estado.sedeNome,
+            bloco: estado.blocoNome,
+            local: estado.ambienteNome,
+            categoria_grupo: estado.categoriaNome,
+            problema: estado.subcategoria,
+            ambiente: complemento,
             descricao_detalhada: descricaoExtra,
+            identificacao_usuario: identificacao, // Novo
             foto_url: fotoUrl,
-
-            // Mantendo a descrição antiga por segurança (backward compatibility)
-            descricao: `${estado.subcategoria} em ${estado.ambienteNome} - ${estado.blocoNome}`
+            descricao: descricaoResumida
         };
 
         const { error } = await db.from('ocorrencias').insert([dados]);
 
         if (error) {
             alert('Erro: ' + error.message);
-            btn.disabled = false;
-            btn.innerText = 'Tentar Novamente';
+            btn.disabled = false; btn.innerText = 'Tentar Novamente';
         } else {
             mudarTela('step-sucesso');
-            btn.disabled = false;
-            btn.innerText = 'ENVIAR RELATO';
+            btn.disabled = false; btn.innerText = 'ENVIAR RELATO';
         }
     });
 }
