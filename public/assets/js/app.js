@@ -4,7 +4,8 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const db = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 // --- ESTADO GLOBAL ---
-let estado = { campusId: null, campusNome: null, sedeId: null, sedeNome: null, blocoNome: null, ambienteNome: null, categoriaId: null, categoriaNome: null, subcategoria: null, tipoRelato: 'Reclamação', deviceId: null, adminLogado: null };
+// O tipoRelato agora inicia como null (Força a escolha)
+let estado = { campusId: null, campusNome: null, sedeId: null, sedeNome: null, blocoNome: null, ambienteNome: null, categoriaId: null, categoriaNome: null, subcategoria: null, tipoRelato: null, deviceId: null, adminLogado: null };
 
 document.addEventListener('DOMContentLoaded', () => {
     gerarDeviceId();
@@ -16,8 +17,6 @@ window.selecionarTipo = function(tipo) {
     estado.tipoRelato = tipo;
     document.getElementById('btn-reclamacao').classList.toggle('selected', tipo === 'Reclamação');
     document.getElementById('btn-melhoria').classList.toggle('selected', tipo === 'Melhoria');
-    const listaContainer = document.getElementById('container-relatos-antigos');
-    if (listaContainer.innerHTML !== '') carregarRelatosExistentes();
 }
 
 function iniciarApp() {
@@ -53,11 +52,8 @@ function renderizarSedes(sedes) {
     }
 }
 
-// Renderiza Blocos (Injetando o 'Geral')
 function renderizarBlocos(listaBlocos) {
     const container = document.getElementById('lista-blocos'); container.innerHTML = '';
-
-    // Garante que "Geral" seja o primeiro da lista
     let blocosFinais = [...listaBlocos];
     if (!blocosFinais.includes('Geral')) blocosFinais.unshift('Geral');
 
@@ -70,7 +66,7 @@ function renderizarBlocos(listaBlocos) {
             estado.blocoNome = blocoNome;
             document.getElementById('titulo-bloco-selecionado').innerText = `Onde no ${blocoNome}?`;
             renderizarAmbientes();
-            verificarAvisosComunidade(blocoNome); // Verifica validações pendentes
+            verificarAvisosComunidade(blocoNome);
             mudarTela('step-ambiente');
         };
         container.appendChild(btn);
@@ -91,9 +87,11 @@ function renderizarCategorias() {
     for (const key in CATEGORIAS) {
         criarBotao(container, CATEGORIAS[key].icone, CATEGORIAS[key].nome, () => {
             estado.categoriaId = key; estado.categoriaNome = CATEGORIAS[key].nome;
-            preencherDetalhes(CATEGORIAS[key]); mudarTela('step-detalhes');
-            document.getElementById('container-relatos-antigos').innerHTML = '';
-            document.getElementById('container-relatos-resolvidos').innerHTML = '';
+            preencherDetalhes(CATEGORIAS[key]);
+            mudarTela('step-detalhes');
+
+            // AUTOMÁTICO: Carrega a lista de relatos assim que entra na tela
+            carregarRelatosExistentes();
         });
     }
 }
@@ -125,7 +123,6 @@ window.voltar = function(stepDestino) {
     else { mudarTela(stepDestino); }
 };
 
-// --- BUSCA POR ID ---
 window.buscarRelato = async function() {
     const idCurto = document.getElementById('input-busca-id').value;
     if(!idCurto) return;
@@ -141,7 +138,6 @@ window.buscarRelato = async function() {
     else window.abrirModalAdmin(dadosJson);
 }
 
-// --- VALIDAÇÃO DA COMUNIDADE (Oculto no Bloco) ---
 async function verificarAvisosComunidade(blocoAtual) {
     const area = document.getElementById('area-validacao-comunidade');
     const container = document.getElementById('lista-validacao-comunidade');
@@ -168,16 +164,14 @@ async function verificarAvisosComunidade(blocoAtual) {
     }
 }
 
-// --- FILTRAGEM DE RELATOS E EXIBIÇÃO ---
 window.carregarRelatosExistentes = async function() {
     const containerAbertos = document.getElementById('container-relatos-antigos');
     const containerResolvidos = document.getElementById('container-relatos-resolvidos');
-    const btn = document.querySelector('.btn-ver-relatos');
+    const txtStatus = document.getElementById('txt-status-carregamento');
 
-    btn.innerText = "Carregando...";
+    txtStatus.innerText = "Carregando...";
     containerAbertos.innerHTML = ''; containerResolvidos.innerHTML = '';
 
-    // Abertos = Pendente OR Em Verificação
     let queryAbertos = db.from('ocorrencias').select('*')
         .in('status', ['pendente', 'em_verificacao'])
         .eq('unidade', estado.campusNome).eq('bloco', estado.blocoNome)
@@ -194,7 +188,7 @@ window.carregarRelatosExistentes = async function() {
     if (estado.sedeNome) queryResolvidos = queryResolvidos.eq('sede', estado.sedeNome);
 
     const [resAbertos, resResolvidos] = await Promise.all([queryAbertos, queryResolvidos]);
-    btn.innerText = "📋 Relatos Abertos neste Local";
+    txtStatus.innerText = "📋 Relatos Abertos e em Andamento";
 
     if (resAbertos.data && resAbertos.data.length > 0) {
         resAbertos.data.forEach(r => containerAbertos.appendChild(criarCardAberto(r)));
@@ -208,8 +202,11 @@ window.carregarRelatosExistentes = async function() {
 function criarCardAberto(relato) {
     const div = document.createElement('div');
     const isVerificacao = relato.status === 'em_verificacao';
+    const isPendente = relato.status === 'pendente';
+    const hasComunidade = relato.comunidade_sugere_conclusao;
     const classeTipo = relato.tipo ? relato.tipo.toLowerCase() : 'reclamação';
-    div.className = `relato-item ${classeTipo} ${isVerificacao ? 'verificacao' : ''}`;
+
+    div.className = `relato-item ${classeTipo} ${isVerificacao ? 'verificacao' : ''} ${hasComunidade ? 'comunidade-alerta' : ''}`;
 
     const dadosJson = encodeURIComponent(JSON.stringify(relato));
     const dataCriacao = new Date(relato.created_at).toLocaleDateString('pt-BR');
@@ -217,8 +214,14 @@ function criarCardAberto(relato) {
 
     let imgHtml = relato.foto_url ? `<img src="${relato.foto_url}" class="foto-miniatura" onclick="window.open('${relato.foto_url}', '_blank')">` : '';
 
+    // Badges visuais de status
+    let badgesHtml = '';
+    if (isPendente) badgesHtml += `<div style="background:#ff9800; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold; margin-bottom:5px; display:inline-block;">🔴 Aberto</div> `;
+    if (isVerificacao) badgesHtml += `<div style="background:#2196F3; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold; margin-bottom:5px; display:inline-block;">🔵 Em Andamento</div> `;
+    if (hasComunidade) badgesHtml += `<div style="background:#e65100; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold; margin-bottom:5px; display:inline-block;">📢 Validar Conclusão</div> `;
+
     div.innerHTML = `
-        ${isVerificacao ? `<div class="badge-verificacao">🔵 Em Verificação (Equipe ciente)</div>` : ''}
+        <div style="margin-bottom: 5px;">${badgesHtml}</div>
         <div class="relato-header">
             <span>${dataCriacao} <span class="relato-id">#${relato.id_curto || ''}</span></span>
             <strong>${relato.tipo === 'Melhoria' ? '💡 Sugestão' : '⚠ Fato'}</strong>
@@ -231,9 +234,10 @@ function criarCardAberto(relato) {
             <button class="btn-acao reforco" onclick="reforcarRelato('${relato.id}', ${qtdReforcos})">👍 Reforçar (${qtdReforcos})</button>
             <button class="btn-acao gerenciar" onclick="abrirModalAdmin('${dadosJson}')">⚙️ Gerenciar</button>
         </div>
+        ${!hasComunidade ? `
         <div class="acoes-linha-2">
             <button class="btn-acao informar" onclick="abrirModalComunidade('${relato.id}')">📢 Informar Conclusão</button>
-        </div>
+        </div>` : ''}
     `;
     return div;
 }
@@ -259,7 +263,6 @@ window.reforcarRelato = async function(idRelato, reforcosAtuais) {
     if (!error) { localStorage.setItem(key, 'true'); carregarRelatosExistentes(); }
 }
 
-// --- MODAL: INFORMAR COMUNIDADE ---
 window.abrirModalComunidade = function(id) {
     document.getElementById('com-id').value = id;
     document.getElementById('com-email').value = ''; document.getElementById('com-desc').value = ''; document.getElementById('com-foto').value = '';
@@ -286,11 +289,10 @@ window.enviarResolucaoComunidade = async function() {
     }).eq('id', id);
 
     if (error) { alert("Erro: " + error.message); }
-    else { alert("Obrigado! A administração verificará sua informação."); fecharModalComunidade(); }
+    else { alert("Obrigado! A administração verificará sua informação."); fecharModalComunidade(); carregarRelatosExistentes(); }
     btn.innerText = "ENVIAR INFORMAÇÃO"; btn.disabled = false;
 }
 
-// --- MODAL: ADMIN ---
 window.abrirModalAdmin = function(dadosUrlCoded) {
     const senha = prompt("Digite a Senha Mestre:");
     if (!senha) return;
@@ -309,10 +311,8 @@ window.abrirModalAdmin = function(dadosUrlCoded) {
     document.getElementById('admin-problema').innerText = r.problema;
     document.getElementById('admin-descricao').innerText = r.descricao_detalhada || '';
 
-    // Foto original
     document.getElementById('admin-area-foto-original').innerHTML = r.foto_url ? `<a href="${r.foto_url}" target="_blank">🖼️ Ver Foto Original anexada</a>` : '';
 
-    // Alerta Comunidade
     const alertaCom = document.getElementById('admin-alerta-comunidade');
     if(r.comunidade_sugere_conclusao) {
         alertaCom.classList.remove('hidden');
@@ -340,10 +340,8 @@ window.salvarGerenciamento = async function() {
     btn.innerText = "Salvando..."; btn.disabled = true;
 
     let dadosUpdate = { complemento_admin: comp, gerenciado_por: estado.adminLogado, status: status };
-
     if (inputFoto.files.length > 0) dadosUpdate.foto_conclusao_url = await uploadFoto(inputFoto.files[0]);
 
-    // Se marcou resolvido, anota a data e limpa a flag da comunidade
     if (status === 'resolvido') {
         dadosUpdate.resolvido_em = new Date().toISOString();
         dadosUpdate.comunidade_sugere_conclusao = false;
@@ -356,7 +354,6 @@ window.salvarGerenciamento = async function() {
     btn.innerText = "💾 SALVAR ALTERAÇÕES"; btn.disabled = false;
 }
 
-// --- MODAL: DETALHES LEITURA ---
 window.abrirModalDetalhes = function(dadosUrlCoded) {
     const r = JSON.parse(decodeURIComponent(dadosUrlCoded));
     document.getElementById('det-id-relato').innerText = `#${r.id_curto}`;
@@ -380,7 +377,6 @@ window.abrirModalDetalhes = function(dadosUrlCoded) {
 }
 window.fecharModalDetalhes = function() { document.getElementById('modal-detalhes').classList.add('hidden'); }
 
-// --- FUNÇÕES GERAIS ---
 async function uploadFoto(arquivo) {
     const nome = `${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
     const { data, error } = await db.storage.from('fotos').upload(nome, arquivo);
@@ -391,9 +387,21 @@ async function uploadFoto(arquivo) {
 const form = document.getElementById('form-report');
 if(form) {
     form.addEventListener('submit', async (e) => {
-        e.preventDefault(); const btn = document.querySelector('.btn-enviar');
+        e.preventDefault();
+
+        // VALIDAÇÃO: Se não escolheu o tipo, trava o envio!
+        if (!estado.tipoRelato) {
+            alert("Por favor, selecione se é uma Sugestão de Melhoria ou um Fato Ocorrido.");
+            return;
+        }
+
+        const btn = document.querySelector('.btn-enviar');
         const comp = document.getElementById('input-complemento').value;
         const desc = document.getElementById('input-descricao').value;
+
+        if(!estado.subcategoria || !complemento || !descricaoExtra.trim()) {
+            alert("Preencha o problema, o local exato e a descrição."); return;
+        }
 
         btn.innerText = 'Enviando...'; btn.disabled = true;
         let fotoUrl = null; if (document.getElementById('input-foto').files.length > 0) fotoUrl = await uploadFoto(document.getElementById('input-foto').files[0]);

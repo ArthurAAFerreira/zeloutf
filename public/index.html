@@ -38,14 +38,13 @@
 
         /* Relatos */
         .lista-relatos { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
-        .btn-ver-relatos { width: 100%; background: #eee; border: none; padding: 12px; border-radius: 8px; color: #555; font-weight: 600; cursor: pointer; }
         .relato-item { background: #f9f9f9; padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 0.9rem; border-left: 4px solid #ccc; position: relative; }
         .relato-item.reclamação { border-left-color: #ff4444; }
         .relato-item.melhoria { border-left-color: #44aa44; }
         .relato-item.resolvido { border-left-color: #ccc; opacity: 0.8; }
-        .relato-item.verificacao { border: 2px solid #2196F3; background: #f0f8ff; } /* Destaque para Em Verificação */
+        .relato-item.verificacao { border: 2px solid #2196F3; background: #f0f8ff; }
+        .relato-item.comunidade-alerta { border: 2px dashed #ff9800; background: #fffde7; }
 
-        .badge-verificacao { background: #2196F3; color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; margin-bottom: 5px; display: inline-block; }
         .relato-header { display: flex; justify-content: space-between; font-size: 0.8rem; color: #888; margin-bottom: 5px; }
         .relato-id { font-weight: bold; color: #333; background: #eee; padding: 2px 6px; border-radius: 4px; }
 
@@ -66,6 +65,9 @@
         .modal-dados-leitura { background: #f4f4f4; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.85rem; color: #555; }
 
         .area-comunidade-valida { background: #fff3e0; border: 1px solid #ffb74d; padding: 15px; border-radius: 8px; margin-top: 20px; }
+
+        /* Rodapé */
+        .footer-discreto { text-align: center; padding: 20px; font-size: 0.75rem; color: #aaa; margin-top: auto; width: 100%; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -109,7 +111,7 @@
 
         <section id="step-detalhes" class="step hidden">
             <button class="btn-voltar" onclick="voltar('step-categoria')">⬅ Voltar</button>
-            <h2>Detalhes</h2>
+            <h2>Informe seu Relato</h2>
 
             <form id="form-report">
                 <label>Qual o tipo do relato?</label>
@@ -117,7 +119,7 @@
                     <div class="tipo-btn" id="btn-melhoria" onclick="selecionarTipo('Melhoria')">
                         💡 Sugestão de Melhoria<br><small>Problemas Existentes</small>
                     </div>
-                    <div class="tipo-btn selected" id="btn-reclamacao" onclick="selecionarTipo('Reclamação')">
+                    <div class="tipo-btn" id="btn-reclamacao" onclick="selecionarTipo('Reclamação')">
                         ⚠ Fato Ocorrido<br><small>Reclamação</small>
                     </div>
                 </div>
@@ -141,8 +143,12 @@
             </form>
 
             <div class="lista-relatos">
-                <button class="btn-ver-relatos" onclick="carregarRelatosExistentes()">📋 Relatos Abertos neste Local</button>
-                <div id="container-relatos-antigos" style="margin-top: 15px;"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 5px; margin-bottom: 15px;">
+                    <h3 id="txt-status-carregamento" style="margin: 0; font-size: 1rem;">📋 Relatos Abertos e em Andamento</h3>
+                    <button onclick="carregarRelatosExistentes()" style="background: none; border: none; cursor: pointer; color: #2196F3; font-size: 0.85rem; font-weight: bold;" title="Atualizar">🔄 Atualizar</button>
+                </div>
+
+                <div id="container-relatos-antigos"></div>
 
                 <h3 style="margin-top: 30px; font-size: 1rem; border-bottom: 2px solid #eee; padding-bottom: 5px;">✅ Relatos Atendidos (Últimos 7 dias)</h3>
                 <div id="container-relatos-resolvidos"></div>
@@ -224,6 +230,10 @@
             <div id="det-conteudo" class="modal-dados-leitura" style="font-size: 0.95rem;"></div>
         </div>
     </div>
+
+    <footer class="footer-discreto">
+        Desenvolvido por ArthurAAFerreira<br>ASGEAD-CT
+    </footer>
 
     <script src="/assets/js/data.js"></script>
     <script src="/assets/js/senhas.js"></script>

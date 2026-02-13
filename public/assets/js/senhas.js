@@ -4,9 +4,9 @@
 // Formato: 'senha_criada_por_voce': 'Nome do Setor ou Responsável'
 
 const SENHAS_MESTRE = {
-    'admin123': 'Coord. Manutenção',
-    'zelo2026': 'Direção Geral',
-    'tiutfpr': 'Suporte TI',
+    'Federer': 'ArthurFerreira',
+    'dirpladct': 'Servidor DIRPLAD',
+    'Luciana': 'DIRPLAD',
     'limpeza26': 'Chefia de Limpeza',
     'seguranca': 'Vigilância'
 };
