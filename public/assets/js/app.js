@@ -384,6 +384,7 @@ async function uploadFoto(arquivo) {
     return db.storage.from('fotos').getPublicUrl(nome).data.publicUrl;
 }
 
+// --- ENVIO DO FORMULÁRIO PRINCIPAL ---
 const form = document.getElementById('form-report');
 if(form) {
     form.addEventListener('submit', async (e) => {
@@ -396,27 +397,52 @@ if(form) {
         }
 
         const btn = document.querySelector('.btn-enviar');
+
+        // Nomes corretos das variáveis aqui:
         const comp = document.getElementById('input-complemento').value;
         const desc = document.getElementById('input-descricao').value;
 
-        if(!estado.subcategoria || !complemento || !descricaoExtra.trim()) {
-            alert("Preencha o problema, o local exato e a descrição."); return;
+        // CORRIGIDO: Agora ele usa 'comp' e 'desc' para validar
+        if(!estado.subcategoria || !comp || !desc.trim()) {
+            alert("Preencha o problema, o local exato e a descrição.");
+            return;
         }
 
         btn.innerText = 'Enviando...'; btn.disabled = true;
-        let fotoUrl = null; if (document.getElementById('input-foto').files.length > 0) fotoUrl = await uploadFoto(document.getElementById('input-foto').files[0]);
+
+        let fotoUrl = null;
+        if (document.getElementById('input-foto').files.length > 0) {
+            fotoUrl = await uploadFoto(document.getElementById('input-foto').files[0]);
+        }
 
         const dados = {
-            device_id: estado.deviceId, tipo: estado.tipoRelato, status: 'pendente',
-            unidade: estado.campusNome, sede: estado.sedeNome, bloco: estado.blocoNome, local: estado.ambienteNome,
-            categoria_grupo: estado.categoriaNome, problema: estado.subcategoria, ambiente: comp, descricao_detalhada: desc,
-            identificacao_usuario: document.getElementById('input-identidade').value, foto_url: fotoUrl,
+            device_id: estado.deviceId,
+            tipo: estado.tipoRelato,
+            status: 'pendente',
+            unidade: estado.campusNome,
+            sede: estado.sedeNome,
+            bloco: estado.blocoNome,
+            local: estado.ambienteNome,
+            categoria_grupo: estado.categoriaNome,
+            problema: estado.subcategoria,
+            ambiente: comp,
+            descricao_detalhada: desc,
+            identificacao_usuario: document.getElementById('input-identidade').value,
+            foto_url: fotoUrl,
             descricao: `${estado.subcategoria} - ${estado.blocoNome}`
         };
 
         const { error } = await db.from('ocorrencias').insert([dados]);
-        if (error) { alert('Erro: ' + error.message); btn.disabled = false; btn.innerText = 'Tentar Novamente'; }
-        else { mudarTela('step-sucesso'); btn.disabled = false; btn.innerText = 'ENVIAR RELATO'; }
+        if (error) {
+            alert('Erro: ' + error.message);
+            btn.disabled = false;
+            btn.innerText = 'Tentar Novamente';
+        } else {
+            mudarTela('step-sucesso');
+            btn.disabled = false;
+            btn.innerText = 'ENVIAR RELATO';
+        }
     });
 }
+
 function gerarDeviceId() { let id = localStorage.getItem('zelo_device_id'); if (!id) { id = Math.random().toString(36).substring(2, 9); localStorage.setItem('zelo_device_id', id); } estado.deviceId = id; }
