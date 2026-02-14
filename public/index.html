@@ -203,6 +203,14 @@
             <div id="conteudo-ia" class="modal-dados-leitura" style="min-height: 150px; text-align: left;">
                 <div style="text-align:center; padding: 20px;">Processando com n8n... 🤖⏳</div>
             </div>
+
+            <div id="area-email-relatorio" class="hidden" style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px;">
+                <label style="margin-top: 0;">Encaminhar este relatório por E-mail:</label>
+                <div style="display: flex; gap: 10px; margin-top: 5px;">
+                    <input type="email" id="input-email-relatorio" placeholder="gestor@utfpr.edu.br" style="margin-bottom: 0;">
+                    <button class="card-btn" style="width: auto; padding: 12px; background: #e8eaf6; color: #3f51b5; border: 1px solid #c5cae9; font-size: 0.9rem;" onclick="enviarRelatorioEmail()">Enviar</button>
+                </div>
+            </div>
         </div>
     </div>
 

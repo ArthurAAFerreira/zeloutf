@@ -4,7 +4,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const db = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 // --- ESTADO GLOBAL ---
-let estado = { campusId: null, campusNome: null, sedeId: null, sedeNome: null, blocoNome: null, ambienteNome: null, categoriaId: null, categoriaNome: null, subcategoria: null, tipoRelato: null, deviceId: null, adminLogado: null };
+let estado = { campusId: null, campusNome: null, sedeId: null, sedeNome: null, blocoNome: null, ambienteNome: null, categoriaId: null, categoriaNome: null, subcategoria: null, tipoRelato: null, deviceId: null, adminLogado: null, ultimoRelatorioTipo: null };
 
 document.addEventListener('DOMContentLoaded', () => { gerarDeviceId(); iniciarApp(); window.onpopstate = () => iniciarApp(); });
 
@@ -94,7 +94,6 @@ function criarBotao(container, icone, texto, onClick) {
 window.mudarTela = function(id) { document.querySelectorAll('.step').forEach(el => el.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
 window.voltar = function(step) { if (step === 'step-sede' && !DADOS_UNIDADES[estado.campusId].temSedes) { history.pushState({}, '', window.location.pathname); iniciarApp(); return; } if (step === 'step-campus') { history.pushState({}, '', window.location.pathname); iniciarApp(); } else { mudarTela(step); } };
 
-// --- FUNÇÕES EXTRAS ---
 window.abrirContatos = function() {
     const contato = DADOS_UNIDADES[estado.campusId]?.contato || 'Contato não cadastrado.';
     document.getElementById('conteudo-contatos').innerHTML = `<strong>${estado.campusNome}</strong><br><br><a href="mailto:${contato.split(' - ')[1]}">${contato}</a>`;
@@ -102,35 +101,39 @@ window.abrirContatos = function() {
 }
 window.fecharModalContatos = function() { document.getElementById('modal-contatos').classList.add('hidden'); }
 
-// --- INTEGRAÇÃO COM N8N (VIA GET) ---
+
+// --- INTEGRAÇÃO COM N8N (URL DINÂMICA POR CÂMPUS) ---
 window.abrirRelatorioInteligente = async function(tipo) {
     const senha = prompt("Acesso Restrito: Digite a Senha Mestre para IA");
     if (!senha || typeof SENHAS_MESTRE === 'undefined' || !SENHAS_MESTRE[senha]) { alert("Acesso Negado."); return; }
 
+    estado.adminLogado = SENHAS_MESTRE[senha];
+    estado.ultimoRelatorioTipo = tipo; // Guarda qual relatório foi gerado para enviar por e-mail depois
+
     document.getElementById('modal-ia').classList.remove('hidden');
     document.getElementById('conteudo-ia').innerHTML = `<div style="text-align:center; padding: 20px;">Conectando ao n8n e processando IA... 🤖⏳</div>`;
+    document.getElementById('area-email-relatorio').classList.add('hidden'); // Esconde o email até carregar
 
-    // URL base do seu Webhook
-    const n8nWebhookBaseUrl = 'https://n8n.arthuraaferreira.com.br/webhook/ia-zelo-utfpr';
+    // GERA A ROTA DO WEBHOOK DINAMICAMENTE (ex: ia-zelo-utfpr-ct)
+    const campusSufixo = estado.campusId ? estado.campusId : 'geral';
+    const n8nWebhookBaseUrl = `https://n8n.arthuraaferreira.com.br/webhook/ia-zelo-utfpr-${campusSufixo}`;
 
     try {
-        // Como é GET, embalamos os dados na URL (Query Parameters)
         const params = new URLSearchParams({
             tipo_relatorio: tipo,
             unidade: estado.campusNome || 'Geral',
-            solicitante: SENHAS_MESTRE[senha]
+            solicitante: estado.adminLogado
         });
 
-        // Envia o GET com os dados na URL
-        const response = await fetch(`${n8nWebhookBaseUrl}?${params.toString()}`, {
-            method: 'GET'
-        });
+        const response = await fetch(`${n8nWebhookBaseUrl}?${params.toString()}`, { method: 'GET' });
 
         if (!response.ok) throw new Error("O n8n retornou um erro ou está offline.");
 
-        // Pega a resposta do n8n
         const textoIA = await response.text();
         document.getElementById('conteudo-ia').innerHTML = textoIA;
+
+        // Exibe a opção de enviar por e-mail após carregar com sucesso
+        document.getElementById('area-email-relatorio').classList.remove('hidden');
 
     } catch (e) {
         document.getElementById('conteudo-ia').innerHTML = `<p style="color:red; text-align:center;">Erro ao conectar com o n8n.<br><small>${e.message}</small></p>`;
@@ -138,6 +141,47 @@ window.abrirRelatorioInteligente = async function(tipo) {
 }
 window.fecharModalIA = function() { document.getElementById('modal-ia').classList.add('hidden'); }
 
+// --- NOVA FUNÇÃO: ENVIAR POR E-MAIL ---
+window.enviarRelatorioEmail = async function() {
+    const inputEmail = document.getElementById('input-email-relatorio');
+    const emailStr = inputEmail.value.trim();
+
+    if(!emailStr.includes('@utfpr.edu.br') && !emailStr.includes('@alunos.utfpr.edu.br')) {
+        alert("Por favor, informe um e-mail válido da UTFPR."); return;
+    }
+
+    const btn = event.target;
+    const textoOriginal = btn.innerText;
+    btn.innerText = "Enviando..."; btn.disabled = true;
+
+    // Usa a mesma rota base do câmpus
+    const campusSufixo = estado.campusId ? estado.campusId : 'geral';
+    const url = `https://n8n.arthuraaferreira.com.br/webhook/ia-zelo-utfpr-${campusSufixo}`;
+
+    // Passa os dados para o n8n informando que a ação agora é enviar e-mail
+    const params = new URLSearchParams({
+        tipo_relatorio: estado.ultimoRelatorioTipo || 'Geral',
+        unidade: estado.campusNome || 'Geral',
+        solicitante: estado.adminLogado || 'Admin',
+        acao: 'enviar_email',
+        email_destino: emailStr
+    });
+
+    try {
+        const response = await fetch(`${url}?${params.toString()}`, { method: 'GET' });
+        if (!response.ok) throw new Error("Erro de conexão com servidor.");
+
+        alert("Relatório encaminhado para " + emailStr + " com sucesso!");
+        inputEmail.value = ''; // Limpa o campo
+    } catch (e) {
+        alert("Falha ao enviar e-mail: " + e.message);
+    }
+
+    btn.innerText = textoOriginal; btn.disabled = false;
+}
+
+
+// --- RESTO DO SISTEMA (Gerenciamento, Modais e Fetch Supabase) ---
 window.buscarRelato = async function() {
     const idCurto = document.getElementById('input-busca-id').value; if(!idCurto) return;
     const btn = event.target; btn.innerText = "...";
@@ -225,14 +269,13 @@ window.enviarResolucaoComunidade = async function() {
     btn.disabled = false;
 }
 
-// ADMIN e TRANSFERÊNCIA
 function preencherSelectTransferencia() {
-    const selBloco = document.getElementById('admin-transf-bloco'); selBloco.innerHTML = '<option value="">Manter bloco atual</option>';
+    const selBloco = document.getElementById('admin-transf-bloco'); selBloco.innerHTML = '<option value="">Manter no bloco atual</option>';
     let blocos = [];
     if(estado.sedeNome) { blocos = DADOS_UNIDADES[estado.campusId].sedes[estado.sedeId].blocos; } else { blocos = DADOS_UNIDADES[estado.campusId].blocos; }
     blocos.forEach(b => { const opt = document.createElement('option'); opt.value = b; opt.innerText = b; selBloco.appendChild(opt); });
 
-    const selAmb = document.getElementById('admin-transf-ambiente'); selAmb.innerHTML = '<option value="">Manter ambiente atual</option>';
+    const selAmb = document.getElementById('admin-transf-ambiente'); selAmb.innerHTML = '<option value="">Manter no ambiente atual</option>';
     AMBIENTES_PADRAO.forEach(a => { const opt = document.createElement('option'); opt.value = a.nome; opt.innerText = a.nome; selAmb.appendChild(opt); });
 }
 
@@ -245,6 +288,8 @@ window.abrirModalAdmin = function(json) {
     document.getElementById('admin-problema').innerText = r.problema;
     document.getElementById('admin-descricao').innerText = r.descricao_detalhada || '';
 
+    document.getElementById('admin-area-foto-original').innerHTML = r.foto_url ? `<a href="${r.foto_url}" target="_blank">🖼️ Ver Foto Original anexada</a>` : '';
+
     const alertaCom = document.getElementById('admin-alerta-comunidade');
     if(r.comunidade_sugere_conclusao) {
         alertaCom.classList.remove('hidden');
@@ -255,13 +300,13 @@ window.abrirModalAdmin = function(json) {
 
     document.getElementById('admin-status').value = r.status || 'pendente';
     document.getElementById('admin-complemento').value = r.complemento_admin || '';
+    document.getElementById('admin-foto').value = '';
 
     preencherSelectTransferencia();
     estado.adminLogado = SENHAS_MESTRE[senha]; document.getElementById('modal-admin').classList.remove('hidden');
 }
 window.fecharModalAdmin = function() { document.getElementById('modal-admin').classList.add('hidden'); }
 
-// --- NOVA FUNÇÃO: RECUSAR VALIDAÇÃO E LIMPAR DADOS ---
 window.recusarValidacaoComunidade = async function() {
     if(!confirm("Tem certeza que deseja recusar essa informação? A foto e os dados enviados pela comunidade serão apagados do sistema.")) return;
 
@@ -270,12 +315,8 @@ window.recusarValidacaoComunidade = async function() {
     const textoOriginal = btn.innerText;
     btn.innerText = "Apagando..."; btn.disabled = true;
 
-    // Atualiza o banco, limpando (null) as colunas da comunidade
     const { error } = await db.from('ocorrencias').update({
-        comunidade_sugere_conclusao: false,
-        comunidade_email: null,
-        comunidade_descricao: null,
-        comunidade_foto_url: null
+        comunidade_sugere_conclusao: false, comunidade_email: null, comunidade_descricao: null, comunidade_foto_url: null
     }).eq('id', id);
 
     if (error) {
@@ -283,8 +324,7 @@ window.recusarValidacaoComunidade = async function() {
         btn.innerText = textoOriginal; btn.disabled = false;
     } else {
         alert("Validação recusada e dados limpos com sucesso.");
-        fecharModalAdmin();
-        carregarRelatosExistentes();
+        fecharModalAdmin(); carregarRelatosExistentes();
     }
 }
 
@@ -295,8 +335,8 @@ window.salvarGerenciamento = async function() {
 
     let update = { complemento_admin: document.getElementById('admin-complemento').value, gerenciado_por: estado.adminLogado, status: status };
     if(document.getElementById('admin-foto').files.length > 0) update.foto_conclusao_url = await uploadFoto(document.getElementById('admin-foto').files[0]);
-    if(status === 'resolvido') { update.resolvido_em = new Date().toISOString(); update.comunidade_sugere_conclusao = false; }
 
+    if(status === 'resolvido') { update.resolvido_em = new Date().toISOString(); update.comunidade_sugere_conclusao = false; }
     if(transfBloco) update.bloco = transfBloco;
     if(transfAmbiente) update.local = transfAmbiente;
 
@@ -307,12 +347,17 @@ window.salvarGerenciamento = async function() {
 
 window.abrirModalDetalhes = function(json) {
     const r = JSON.parse(decodeURIComponent(json)); document.getElementById('det-id-relato').innerText = `#${r.id_curto}`;
-    document.getElementById('det-conteudo').innerHTML = `<strong>Problema:</strong> ${r.problema} <br><strong>Descrição:</strong> ${r.descricao_detalhada}<hr><strong>Concluído:</strong> ${new Date(r.resolvido_em).toLocaleDateString()}<br><strong>Nota Admin:</strong> ${r.complemento_admin||'-'}`;
+
+    let html = `<strong>Problema:</strong> ${r.problema} (${r.bloco} - ${r.ambiente}) <br><strong>Descrição original:</strong> <em>${r.descricao_detalhada}</em> <br><hr><strong style="color:green;">Concluído em:</strong> ${new Date(r.resolvido_em).toLocaleString('pt-BR')} <br><strong>Encerrado por:</strong> ${r.gerenciado_por || 'Sistema'} <br><strong>Anotação Admin:</strong> ${r.complemento_admin || '-'}`;
+    if(r.foto_url) html += `<br><a href="${r.foto_url}" target="_blank">🖼️ Foto Original</a>`;
+    if(r.foto_conclusao_url) html += `<br><a href="${r.foto_conclusao_url}" target="_blank">🖼️ Foto da Conclusão</a>`;
+
+    document.getElementById('det-conteudo').innerHTML = html;
     document.getElementById('modal-detalhes').classList.remove('hidden');
 }
 window.fecharModalDetalhes = function() { document.getElementById('modal-detalhes').classList.add('hidden'); }
 
-async function uploadFoto(arq) { const n = `${Date.now()}.jpg`; const {error} = await db.storage.from('fotos').upload(n, arq); return error ? null : db.storage.from('fotos').getPublicUrl(n).data.publicUrl; }
+async function uploadFoto(arq) { const n = `${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`; const {error} = await db.storage.from('fotos').upload(n, arq); return error ? null : db.storage.from('fotos').getPublicUrl(n).data.publicUrl; }
 
 const f = document.getElementById('form-report');
 if(f) f.addEventListener('submit', async(e)=>{
