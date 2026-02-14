@@ -4,14 +4,9 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const db = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 // --- ESTADO GLOBAL ---
-// O tipoRelato agora inicia como null (Força a escolha)
 let estado = { campusId: null, campusNome: null, sedeId: null, sedeNome: null, blocoNome: null, ambienteNome: null, categoriaId: null, categoriaNome: null, subcategoria: null, tipoRelato: null, deviceId: null, adminLogado: null };
 
-document.addEventListener('DOMContentLoaded', () => {
-    gerarDeviceId();
-    iniciarApp();
-    window.onpopstate = () => iniciarApp();
-});
+document.addEventListener('DOMContentLoaded', () => { gerarDeviceId(); iniciarApp(); window.onpopstate = () => iniciarApp(); });
 
 window.selecionarTipo = function(tipo) {
     estado.tipoRelato = tipo;
@@ -27,47 +22,45 @@ function iniciarApp() {
         document.getElementById('campus-name').innerText = `UTFPR - ${campus.nome}`;
         if (campus.temSedes) { renderizarSedes(campus.sedes); mudarTela('step-sede'); }
         else { renderizarBlocos(campus.blocos); mudarTela('step-bloco'); }
-    } else {
-        document.getElementById('campus-name').innerText = "ZeloUTF";
-        renderizarListaCampus(); mudarTela('step-campus');
-    }
+    } else { document.getElementById('campus-name').innerText = "ZeloUTF"; renderizarListaCampus(); mudarTela('step-campus'); }
 }
 
 function renderizarListaCampus() {
     const container = document.getElementById('lista-campus'); container.innerHTML = '';
     for (const key in DADOS_UNIDADES) {
-        criarBotao(container, 'location_on', DADOS_UNIDADES[key].nome, () => {
-            history.pushState({id: key}, '', window.location.pathname + '?c=' + key); iniciarApp();
-        });
+        criarBotao(container, 'location_on', DADOS_UNIDADES[key].nome, () => { history.pushState({id: key}, '', window.location.pathname + '?c=' + key); iniciarApp(); });
     }
 }
 
 function renderizarSedes(sedes) {
     const container = document.getElementById('lista-sedes'); container.innerHTML = '';
     for (const key in sedes) {
-        criarBotao(container, 'business', sedes[key].nome, () => {
-            estado.sedeId = key; estado.sedeNome = sedes[key].nome;
-            renderizarBlocos(sedes[key].blocos); mudarTela('step-bloco');
-        });
+        criarBotao(container, 'business', sedes[key].nome, () => { estado.sedeId = key; estado.sedeNome = sedes[key].nome; renderizarBlocos(sedes[key].blocos); mudarTela('step-bloco'); });
     }
 }
 
 function renderizarBlocos(listaBlocos) {
     const container = document.getElementById('lista-blocos'); container.innerHTML = '';
+
+    // ORDENAÇÃO INTELIGENTE
     let blocosFinais = [...listaBlocos];
-    if (!blocosFinais.includes('Geral')) blocosFinais.unshift('Geral');
+    blocosFinais = blocosFinais.filter(b => !['Geral', 'Áreas de Acesso', 'Área de Circulação'].includes(b));
+    blocosFinais.sort(); // Ordem alfabética pro resto
+    if (listaBlocos.includes('Área de Circulação')) blocosFinais.unshift('Área de Circulação');
+    if (listaBlocos.includes('Áreas de Acesso')) blocosFinais.unshift('Áreas de Acesso');
+    blocosFinais.unshift('Geral'); // Geral sempre no topo
 
     blocosFinais.forEach(blocoNome => {
         const isGeral = (blocoNome === 'Geral');
+        const isAcesso = (blocoNome === 'Áreas de Acesso' || blocoNome === 'Área de Circulação');
+        let icone = 'domain'; if(isGeral) icone = 'public'; if(isAcesso) icone = 'directions_walk';
+
         const btn = document.createElement('button');
         btn.className = isGeral ? 'card-btn geral' : 'card-btn';
-        btn.innerHTML = `<span class="material-icons-round">${isGeral ? 'public' : 'domain'}</span> <span>${blocoNome}</span>`;
+        btn.innerHTML = `<span class="material-icons-round">${icone}</span> <span>${blocoNome}</span>`;
         btn.onclick = () => {
-            estado.blocoNome = blocoNome;
-            document.getElementById('titulo-bloco-selecionado').innerText = `Onde no ${blocoNome}?`;
-            renderizarAmbientes();
-            verificarAvisosComunidade(blocoNome);
-            mudarTela('step-ambiente');
+            estado.blocoNome = blocoNome; document.getElementById('titulo-bloco-selecionado').innerText = `Onde no ${blocoNome}?`;
+            renderizarAmbientes(); verificarAvisosComunidade(blocoNome); mudarTela('step-ambiente');
         };
         container.appendChild(btn);
     });
@@ -75,11 +68,7 @@ function renderizarBlocos(listaBlocos) {
 
 function renderizarAmbientes() {
     const container = document.getElementById('lista-ambientes'); container.innerHTML = '';
-    AMBIENTES_PADRAO.forEach(amb => {
-        criarBotao(container, amb.icone, amb.nome, () => {
-            estado.ambienteNome = amb.nome; renderizarCategorias(); mudarTela('step-categoria');
-        });
-    });
+    AMBIENTES_PADRAO.forEach(amb => { criarBotao(container, amb.icone, amb.nome, () => { estado.ambienteNome = amb.nome; renderizarCategorias(); mudarTela('step-categoria'); }); });
 }
 
 function renderizarCategorias() {
@@ -87,362 +76,200 @@ function renderizarCategorias() {
     for (const key in CATEGORIAS) {
         criarBotao(container, CATEGORIAS[key].icone, CATEGORIAS[key].nome, () => {
             estado.categoriaId = key; estado.categoriaNome = CATEGORIAS[key].nome;
-            preencherDetalhes(CATEGORIAS[key]);
-            mudarTela('step-detalhes');
-
-            // AUTOMÁTICO: Carrega a lista de relatos assim que entra na tela
-            carregarRelatosExistentes();
+            preencherDetalhes(CATEGORIAS[key]); mudarTela('step-detalhes'); carregarRelatosExistentes();
         });
     }
 }
 
 function preencherDetalhes(cat) {
     const select = document.getElementById('input-subcategoria'); select.innerHTML = '<option value="">Selecione o problema...</option>';
-    cat.itens.forEach(item => {
-        const opt = document.createElement('option'); opt.value = item; opt.innerText = item; select.appendChild(opt);
-    });
+    cat.itens.forEach(item => { const opt = document.createElement('option'); opt.value = item; opt.innerText = item; select.appendChild(opt); });
     select.onchange = (e) => estado.subcategoria = e.target.value;
 }
 
 function criarBotao(container, icone, texto, onClick) {
     const btn = document.createElement('button'); btn.className = 'card-btn';
-    btn.innerHTML = `<span class="material-icons-round">${icone}</span> <span>${texto}</span>`;
-    btn.onclick = onClick; container.appendChild(btn);
+    btn.innerHTML = `<span class="material-icons-round">${icone}</span> <span>${texto}</span>`; btn.onclick = onClick; container.appendChild(btn);
 }
 
-window.mudarTela = function(id) {
-    document.querySelectorAll('.step').forEach(el => el.classList.add('hidden'));
-    document.getElementById(id).classList.remove('hidden');
-}
+window.mudarTela = function(id) { document.querySelectorAll('.step').forEach(el => el.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
+window.voltar = function(step) { if (step === 'step-sede' && !DADOS_UNIDADES[estado.campusId].temSedes) { history.pushState({}, '', window.location.pathname); iniciarApp(); return; } if (step === 'step-campus') { history.pushState({}, '', window.location.pathname); iniciarApp(); } else { mudarTela(step); } };
 
-window.voltar = function(stepDestino) {
-    if (stepDestino === 'step-sede') {
-        if (!DADOS_UNIDADES[estado.campusId].temSedes) { history.pushState({}, '', window.location.pathname); iniciarApp(); return; }
+// --- FUNÇÕES EXTRAS ---
+window.abrirContatos = function() {
+    const contato = DADOS_UNIDADES[estado.campusId]?.contato || 'Contato não cadastrado.';
+    document.getElementById('conteudo-contatos').innerHTML = `<strong>${estado.campusNome}</strong><br><br><a href="mailto:${contato.split(' - ')[1]}">${contato}</a>`;
+    document.getElementById('modal-contatos').classList.remove('hidden');
+}
+window.fecharModalContatos = function() { document.getElementById('modal-contatos').classList.add('hidden'); }
+
+window.abrirRelatorioInteligente = async function(tipo) {
+    const senha = prompt("Acesso Restrito: Digite a Senha Mestre para IA");
+    if (!senha || !SENHAS_MESTRE || !SENHAS_MESTRE[senha]) { alert("Acesso Negado."); return; }
+
+    document.getElementById('modal-ia').classList.remove('hidden');
+
+    // --- INTEGRAÇÃO COM N8N (Exemplo a ser preenchido) ---
+    // URL do seu Webhook no n8n. Você substituirá essa URL no futuro.
+    const n8nWebhookUrl = 'https://seu-n8n.com/webhook/relatorio-ia';
+
+    try {
+        /* DESCOMENTE NO FUTURO:
+        const response = await fetch(n8nWebhookUrl, { method: 'POST', body: JSON.stringify({ tipo: tipo, unidade: estado.campusNome }) });
+        const textoIA = await response.text();
+        document.getElementById('conteudo-ia').innerHTML = textoIA;
+        */
+        // Simulação enquanto não tem o n8n plugado:
+        setTimeout(() => {
+            document.getElementById('conteudo-ia').innerHTML = `<h3>Relatório: ${tipo}</h3><p>A inteligência artificial analisou os dados. (Aguardando conexão com n8n).</p>`;
+        }, 2000);
+    } catch (e) {
+        document.getElementById('conteudo-ia').innerHTML = `<p style="color:red;">Erro ao conectar com a Inteligência Artificial.</p>`;
     }
-    if (stepDestino === 'step-campus') { history.pushState({}, '', window.location.pathname); iniciarApp(); }
-    else { mudarTela(stepDestino); }
-};
+}
+window.fecharModalIA = function() { document.getElementById('modal-ia').classList.add('hidden'); }
 
+// --- RESTO DO CÓDIGO (Busca, Modais Admin, Envio) ---
 window.buscarRelato = async function() {
-    const idCurto = document.getElementById('input-busca-id').value;
-    if(!idCurto) return;
+    const idCurto = document.getElementById('input-busca-id').value; if(!idCurto) return;
     const btn = event.target; btn.innerText = "...";
-
     const {data, error} = await db.from('ocorrencias').select('*').eq('id_curto', idCurto).single();
     btn.innerText = "Buscar";
-
-    if(error || !data) { alert("Relato não encontrado!"); return; }
-
-    const dadosJson = encodeURIComponent(JSON.stringify(data));
-    if (data.status === 'resolvido') window.abrirModalDetalhes(dadosJson);
-    else window.abrirModalAdmin(dadosJson);
+    if(error || !data) { alert("Não encontrado!"); return; }
+    const json = encodeURIComponent(JSON.stringify(data));
+    data.status === 'resolvido' ? window.abrirModalDetalhes(json) : window.abrirModalAdmin(json);
 }
 
-async function verificarAvisosComunidade(blocoAtual) {
-    const area = document.getElementById('area-validacao-comunidade');
-    const container = document.getElementById('lista-validacao-comunidade');
-    area.classList.add('hidden'); container.innerHTML = '';
-
-    let query = db.from('ocorrencias').select('*')
-        .eq('comunidade_sugere_conclusao', true)
-        .neq('status', 'resolvido')
-        .eq('unidade', estado.campusNome)
-        .eq('bloco', blocoAtual);
-    if(estado.sedeNome) query = query.eq('sede', estado.sedeNome);
-
-    const {data, error} = await query;
+async function verificarAvisosComunidade(bloco) {
+    let q = db.from('ocorrencias').select('*').eq('comunidade_sugere_conclusao', true).neq('status', 'resolvido').eq('unidade', estado.campusNome).eq('bloco', bloco);
+    if(estado.sedeNome) q = q.eq('sede', estado.sedeNome);
+    const {data} = await q;
+    const area = document.getElementById('area-validacao-comunidade'); const cnt = document.getElementById('lista-validacao-comunidade');
+    area.classList.add('hidden'); cnt.innerHTML = '';
     if(data && data.length > 0) {
         area.classList.remove('hidden');
-        data.forEach(r => {
-            const div = document.createElement('div');
-            div.className = 'relato-item';
-            div.style.cursor = 'pointer';
-            div.innerHTML = `<strong>#${r.id_curto}</strong> - ${r.problema} <br><small>Requer validação admin</small>`;
-            div.onclick = () => window.abrirModalAdmin(encodeURIComponent(JSON.stringify(r)));
-            container.appendChild(div);
-        });
+        data.forEach(r => { const d = document.createElement('div'); d.className = 'relato-item'; d.style.cursor = 'pointer'; d.innerHTML = `<strong>#${r.id_curto}</strong> - ${r.problema}`; d.onclick = () => window.abrirModalAdmin(encodeURIComponent(JSON.stringify(r))); cnt.appendChild(d); });
     }
 }
 
 window.carregarRelatosExistentes = async function() {
-    const containerAbertos = document.getElementById('container-relatos-antigos');
-    const containerResolvidos = document.getElementById('container-relatos-resolvidos');
-    const txtStatus = document.getElementById('txt-status-carregamento');
-
-    txtStatus.innerText = "Carregando...";
-    containerAbertos.innerHTML = ''; containerResolvidos.innerHTML = '';
-
-    let queryAbertos = db.from('ocorrencias').select('*')
-        .in('status', ['pendente', 'em_verificacao'])
-        .eq('unidade', estado.campusNome).eq('bloco', estado.blocoNome)
-        .eq('local', estado.ambienteNome).eq('categoria_grupo', estado.categoriaNome)
-        .order('reforcos', { ascending: false }).order('created_at', { ascending: false }).limit(15);
-    if (estado.sedeNome) queryAbertos = queryAbertos.eq('sede', estado.sedeNome);
-
-    const seteDiasAtras = new Date(); seteDiasAtras.setDate(seteDiasAtras.getDate() - 7);
-    let queryResolvidos = db.from('ocorrencias').select('*')
-        .eq('status', 'resolvido').gte('resolvido_em', seteDiasAtras.toISOString())
-        .eq('unidade', estado.campusNome).eq('bloco', estado.blocoNome)
-        .eq('local', estado.ambienteNome).eq('categoria_grupo', estado.categoriaNome)
-        .order('resolvido_em', { ascending: false }).limit(10);
-    if (estado.sedeNome) queryResolvidos = queryResolvidos.eq('sede', estado.sedeNome);
-
-    const [resAbertos, resResolvidos] = await Promise.all([queryAbertos, queryResolvidos]);
-    txtStatus.innerText = "📋 Relatos Abertos e em Andamento";
-
-    if (resAbertos.data && resAbertos.data.length > 0) {
-        resAbertos.data.forEach(r => containerAbertos.appendChild(criarCardAberto(r)));
-    } else { containerAbertos.innerHTML = '<p style="text-align:center; color:#999;">Nenhum relato aberto aqui.</p>'; }
-
-    if (resResolvidos.data && resResolvidos.data.length > 0) {
-        resResolvidos.data.forEach(r => containerResolvidos.appendChild(criarCardResolvido(r)));
-    } else { containerResolvidos.innerHTML = '<p style="text-align:center; font-size: 0.8rem; color:#ccc;">Nenhum relato recente concluído.</p>'; }
+    const cAb = document.getElementById('container-relatos-antigos'); const cRe = document.getElementById('container-relatos-resolvidos');
+    cAb.innerHTML = ''; cRe.innerHTML = '';
+    let qAb = db.from('ocorrencias').select('*').in('status', ['pendente', 'em_verificacao']).eq('unidade', estado.campusNome).eq('bloco', estado.blocoNome).eq('local', estado.ambienteNome).eq('categoria_grupo', estado.categoriaNome).order('reforcos', {ascending: false}).limit(15);
+    if(estado.sedeNome) qAb = qAb.eq('sede', estado.sedeNome);
+    const d = new Date(); d.setDate(d.getDate() - 7);
+    let qRe = db.from('ocorrencias').select('*').eq('status', 'resolvido').gte('resolvido_em', d.toISOString()).eq('unidade', estado.campusNome).eq('bloco', estado.blocoNome).eq('local', estado.ambienteNome).eq('categoria_grupo', estado.categoriaNome).order('resolvido_em', {ascending: false}).limit(10);
+    if(estado.sedeNome) qRe = qRe.eq('sede', estado.sedeNome);
+    const [rAb, rRe] = await Promise.all([qAb, qRe]);
+    if(rAb.data && rAb.data.length > 0) rAb.data.forEach(r => cAb.appendChild(criarCardAberto(r))); else cAb.innerHTML = '<p style="color:#999; text-align:center;">Nenhum aqui.</p>';
+    if(rRe.data && rRe.data.length > 0) rRe.data.forEach(r => cRe.appendChild(criarCardResolvido(r))); else cRe.innerHTML = '<p style="color:#ccc; text-align:center;">Nenhum concluído recentemente.</p>';
 }
 
-function criarCardAberto(relato) {
-    const div = document.createElement('div');
-    const isVerificacao = relato.status === 'em_verificacao';
-    const isPendente = relato.status === 'pendente';
-    const hasComunidade = relato.comunidade_sugere_conclusao;
-    const classeTipo = relato.tipo ? relato.tipo.toLowerCase() : 'reclamação';
-
-    div.className = `relato-item ${classeTipo} ${isVerificacao ? 'verificacao' : ''} ${hasComunidade ? 'comunidade-alerta' : ''}`;
-
-    const dadosJson = encodeURIComponent(JSON.stringify(relato));
-    const dataCriacao = new Date(relato.created_at).toLocaleDateString('pt-BR');
-    const qtdReforcos = relato.reforcos || 0;
-
-    let imgHtml = relato.foto_url ? `<img src="${relato.foto_url}" class="foto-miniatura" onclick="window.open('${relato.foto_url}', '_blank')">` : '';
-
-    // Badges visuais de status
-    let badgesHtml = '';
-    if (isPendente) badgesHtml += `<div style="background:#ff9800; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold; margin-bottom:5px; display:inline-block;">🔴 Aberto</div> `;
-    if (isVerificacao) badgesHtml += `<div style="background:#2196F3; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold; margin-bottom:5px; display:inline-block;">🔵 Em Andamento</div> `;
-    if (hasComunidade) badgesHtml += `<div style="background:#e65100; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold; margin-bottom:5px; display:inline-block;">📢 Validar Conclusão</div> `;
-
-    div.innerHTML = `
-        <div style="margin-bottom: 5px;">${badgesHtml}</div>
-        <div class="relato-header">
-            <span>${dataCriacao} <span class="relato-id">#${relato.id_curto || ''}</span></span>
-            <strong>${relato.tipo === 'Melhoria' ? '💡 Sugestão' : '⚠ Fato'}</strong>
-        </div>
-        <div style="font-weight:bold; margin-bottom:4px;">${relato.problema}</div>
-        <div style="font-size: 0.9em; color: #555;">${relato.descricao_detalhada || ''}</div>
-        ${relato.ambiente ? `<small style="display:block; margin-top:5px; color:#888;">Local: ${relato.ambiente}</small>` : ''}
-        ${imgHtml}
+function criarCardAberto(r) {
+    const d = document.createElement('div');
+    const isVer = r.status === 'em_verificacao'; const hasCom = r.comunidade_sugere_conclusao;
+    d.className = `relato-item ${r.tipo ? r.tipo.toLowerCase() : 'reclamação'} ${isVer ? 'verificacao' : ''} ${hasCom ? 'comunidade-alerta' : ''}`;
+    let bHtml = '';
+    if(r.status === 'pendente') bHtml += `<span style="background:#ff9800; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold;">🔴 Aberto</span> `;
+    if(isVer) bHtml += `<span style="background:#2196F3; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold;">🔵 Em Verificação / Acatado</span> `;
+    if(hasCom) bHtml += `<span style="background:#e65100; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold;">📢 Validar Conclusão</span>`;
+    d.innerHTML = `
+        <div style="margin-bottom: 5px;">${bHtml}</div>
+        <div class="relato-header"><span>${new Date(r.created_at).toLocaleDateString('pt-BR')} <span class="relato-id">#${r.id_curto || ''}</span></span> <strong>${r.tipo === 'Melhoria' ? '💡 Sugestão' : '⚠ Fato'}</strong></div>
+        <div style="font-weight:bold;">${r.problema}</div><div style="font-size:0.9em; color:#555;">${r.descricao_detalhada || ''}</div>
+        ${r.ambiente ? `<small style="display:block; color:#888;">Local: ${r.ambiente}</small>` : ''}
         <div class="acoes-linha-1">
-            <button class="btn-acao reforco" onclick="reforcarRelato('${relato.id}', ${qtdReforcos})">👍 Reforçar (${qtdReforcos})</button>
-            <button class="btn-acao gerenciar" onclick="abrirModalAdmin('${dadosJson}')">⚙️ Gerenciar</button>
+            <button class="btn-acao reforco" onclick="reforcarRelato('${r.id}', ${r.reforcos||0})">👍 Reforçar (${r.reforcos||0})</button>
+            <button class="btn-acao gerenciar" onclick="abrirModalAdmin('${encodeURIComponent(JSON.stringify(r))}')">⚙️ Gerenciar</button>
         </div>
-        ${!hasComunidade ? `
-        <div class="acoes-linha-2">
-            <button class="btn-acao informar" onclick="abrirModalComunidade('${relato.id}')">📢 Informar Conclusão</button>
-        </div>` : ''}
+        ${!hasCom ? `<div class="acoes-linha-2"><button class="btn-acao informar" onclick="abrirModalComunidade('${r.id}')">📢 Informar Conclusão</button></div>` : ''}
     `;
-    return div;
+    return d;
 }
 
-function criarCardResolvido(relato) {
-    const div = document.createElement('div');
-    div.className = 'relato-item resolvido';
-    const dadosJson = encodeURIComponent(JSON.stringify(relato));
-    const dataConclusao = new Date(relato.resolvido_em).toLocaleDateString('pt-BR');
-
-    div.innerHTML = `
-        <div class="relato-header"><span>#${relato.id_curto || ''} - Encerrado em ${dataConclusao}</span></div>
-        <div style="font-weight:bold;">${relato.problema}</div>
-        <button class="btn-acao" style="margin-top:10px; width:100%;" onclick="abrirModalDetalhes('${dadosJson}')">Ver Detalhes</button>
-    `;
-    return div;
+function criarCardResolvido(r) {
+    const d = document.createElement('div'); d.className = 'relato-item resolvido';
+    d.innerHTML = `<div class="relato-header"><span>#${r.id_curto||''} - Encerrado em ${new Date(r.resolvido_em).toLocaleDateString('pt-BR')}</span></div><div style="font-weight:bold;">${r.problema}</div><button class="btn-acao" style="margin-top:10px; width:100%;" onclick="abrirModalDetalhes('${encodeURIComponent(JSON.stringify(r))}')">Ver Detalhes</button>`;
+    return d;
 }
 
-window.reforcarRelato = async function(idRelato, reforcosAtuais) {
-    const key = `upvote_${idRelato}`;
-    if (localStorage.getItem(key)) { alert("Você já reforçou este relato!"); return; }
-    const { error } = await db.from('ocorrencias').update({ reforcos: reforcosAtuais + 1, ultimo_reforco_em: new Date().toISOString() }).eq('id', idRelato);
-    if (!error) { localStorage.setItem(key, 'true'); carregarRelatosExistentes(); }
+window.reforcarRelato = async function(id, ref) {
+    const k = `upvote_${id}`; if(localStorage.getItem(k)) { alert("Já reforçou!"); return; }
+    const {error} = await db.from('ocorrencias').update({reforcos: ref+1, ultimo_reforco_em: new Date().toISOString()}).eq('id', id);
+    if(!error) { localStorage.setItem(k, 'true'); carregarRelatosExistentes(); }
 }
 
-window.abrirModalComunidade = function(id) {
-    document.getElementById('com-id').value = id;
-    document.getElementById('com-email').value = ''; document.getElementById('com-desc').value = ''; document.getElementById('com-foto').value = '';
-    document.getElementById('modal-comunidade').classList.remove('hidden');
-}
+window.abrirModalComunidade = function(id) { document.getElementById('com-id').value = id; document.getElementById('modal-comunidade').classList.remove('hidden'); }
 window.fecharModalComunidade = function() { document.getElementById('modal-comunidade').classList.add('hidden'); }
-
 window.enviarResolucaoComunidade = async function() {
-    const id = document.getElementById('com-id').value;
-    const email = document.getElementById('com-email').value.trim();
-    const desc = document.getElementById('com-desc').value;
-    const inputFoto = document.getElementById('com-foto');
-    const btn = document.querySelector('#modal-comunidade .btn-enviar');
-
-    if(!email.includes('@utfpr.edu.br') && !email.includes('@alunos.utfpr.edu.br')) { alert("Use e-mail UTFPR válido."); return; }
-
-    btn.innerText = "Enviando..."; btn.disabled = true;
-    let fotoUrl = null;
-    if (inputFoto.files.length > 0) fotoUrl = await uploadFoto(inputFoto.files[0]);
-
-    const { error } = await db.from('ocorrencias').update({
-        comunidade_sugere_conclusao: true,
-        comunidade_email: email, comunidade_descricao: desc, comunidade_foto_url: fotoUrl
-    }).eq('id', id);
-
-    if (error) { alert("Erro: " + error.message); }
-    else { alert("Obrigado! A administração verificará sua informação."); fecharModalComunidade(); carregarRelatosExistentes(); }
-    btn.innerText = "ENVIAR INFORMAÇÃO"; btn.disabled = false;
+    const id = document.getElementById('com-id').value; const email = document.getElementById('com-email').value; const btn = document.querySelector('#modal-comunidade .btn-enviar');
+    if(!email.includes('@utfpr.edu.br') && !email.includes('@alunos.utfpr.edu.br')) { alert("Use e-mail UTFPR."); return; }
+    btn.disabled = true; let fUrl = null; if(document.getElementById('com-foto').files.length > 0) fUrl = await uploadFoto(document.getElementById('com-foto').files[0]);
+    const {error} = await db.from('ocorrencias').update({comunidade_sugere_conclusao: true, comunidade_email: email, comunidade_descricao: document.getElementById('com-desc').value, comunidade_foto_url: fUrl}).eq('id', id);
+    if(!error) { alert("Enviado!"); fecharModalComunidade(); carregarRelatosExistentes(); }
+    btn.disabled = false;
 }
 
-window.abrirModalAdmin = function(dadosUrlCoded) {
-    const senha = prompt("Digite a Senha Mestre:");
-    if (!senha) return;
-    if (typeof SENHAS_MESTRE === 'undefined') { alert("Erro de senhas."); return; }
-    const admin = SENHAS_MESTRE[senha];
-    if (!admin) { alert("Senha incorreta!"); return; }
+// ADMIN e TRANSFERÊNCIA
+function preencherSelectTransferencia() {
+    const selBloco = document.getElementById('admin-transf-bloco'); selBloco.innerHTML = '<option value="">Manter bloco atual</option>';
+    let blocos = [];
+    if(estado.sedeNome) { blocos = DADOS_UNIDADES[estado.campusId].sedes[estado.sedeId].blocos; } else { blocos = DADOS_UNIDADES[estado.campusId].blocos; }
+    blocos.forEach(b => { const opt = document.createElement('option'); opt.value = b; opt.innerText = b; selBloco.appendChild(opt); });
 
-    const r = JSON.parse(decodeURIComponent(dadosUrlCoded));
+    const selAmb = document.getElementById('admin-transf-ambiente'); selAmb.innerHTML = '<option value="">Manter ambiente atual</option>';
+    AMBIENTES_PADRAO.forEach(a => { const opt = document.createElement('option'); opt.value = a.nome; opt.innerText = a.nome; selAmb.appendChild(opt); });
+}
 
+window.abrirModalAdmin = function(json) {
+    const senha = prompt("Senha Mestre:"); if(!senha || !SENHAS_MESTRE[senha]) { alert("Acesso Negado."); return; }
+    const r = JSON.parse(decodeURIComponent(json));
     document.getElementById('admin-uuid').value = r.id;
     document.getElementById('admin-id-relato').innerText = r.id_curto ? `#${r.id_curto}` : '';
-    document.getElementById('admin-criado').innerText = new Date(r.created_at).toLocaleString('pt-BR');
-    document.getElementById('admin-reforco').innerText = r.ultimo_reforco_em ? new Date(r.ultimo_reforco_em).toLocaleDateString('pt-BR') : 'Nunca';
-    document.getElementById('admin-qtd-reforco').innerText = r.reforcos || 0;
     document.getElementById('admin-local').innerText = `${r.bloco} - ${r.ambiente}`;
     document.getElementById('admin-problema').innerText = r.problema;
     document.getElementById('admin-descricao').innerText = r.descricao_detalhada || '';
-
-    document.getElementById('admin-area-foto-original').innerHTML = r.foto_url ? `<a href="${r.foto_url}" target="_blank">🖼️ Ver Foto Original anexada</a>` : '';
-
-    const alertaCom = document.getElementById('admin-alerta-comunidade');
-    if(r.comunidade_sugere_conclusao) {
-        alertaCom.classList.remove('hidden');
-        document.getElementById('admin-com-email').innerText = `Por: ${r.comunidade_email}`;
-        document.getElementById('admin-com-desc').innerText = r.comunidade_descricao || 'Sem descrição extra';
-        document.getElementById('admin-com-foto').innerHTML = r.comunidade_foto_url ? `<br><a href="${r.comunidade_foto_url}" target="_blank">🖼️ Ver foto enviada pela comunidade</a>` : '';
-    } else { alertaCom.classList.add('hidden'); }
-
     document.getElementById('admin-status').value = r.status || 'pendente';
     document.getElementById('admin-complemento').value = r.complemento_admin || '';
-    document.getElementById('admin-foto').value = '';
 
-    estado.adminLogado = admin;
-    document.getElementById('modal-admin').classList.remove('hidden');
+    preencherSelectTransferencia();
+    estado.adminLogado = SENHAS_MESTRE[senha]; document.getElementById('modal-admin').classList.remove('hidden');
 }
 window.fecharModalAdmin = function() { document.getElementById('modal-admin').classList.add('hidden'); }
 
 window.salvarGerenciamento = async function() {
-    const id = document.getElementById('admin-uuid').value;
-    const comp = document.getElementById('admin-complemento').value;
-    const status = document.getElementById('admin-status').value;
-    const inputFoto = document.getElementById('admin-foto');
-    const btn = document.querySelector('#modal-admin .btn-enviar');
+    const id = document.getElementById('admin-uuid').value; const status = document.getElementById('admin-status').value;
+    const transfBloco = document.getElementById('admin-transf-bloco').value; const transfAmbiente = document.getElementById('admin-transf-ambiente').value;
+    const btn = document.querySelector('#modal-admin .btn-enviar'); btn.disabled = true;
 
-    btn.innerText = "Salvando..."; btn.disabled = true;
+    let update = { complemento_admin: document.getElementById('admin-complemento').value, gerenciado_por: estado.adminLogado, status: status };
+    if(document.getElementById('admin-foto').files.length > 0) update.foto_conclusao_url = await uploadFoto(document.getElementById('admin-foto').files[0]);
+    if(status === 'resolvido') { update.resolvido_em = new Date().toISOString(); update.comunidade_sugere_conclusao = false; }
 
-    let dadosUpdate = { complemento_admin: comp, gerenciado_por: estado.adminLogado, status: status };
-    if (inputFoto.files.length > 0) dadosUpdate.foto_conclusao_url = await uploadFoto(inputFoto.files[0]);
+    // Aplica transferência se o admin escolheu algo diferente do atual
+    if(transfBloco) update.bloco = transfBloco;
+    if(transfAmbiente) update.local = transfAmbiente;
 
-    if (status === 'resolvido') {
-        dadosUpdate.resolvido_em = new Date().toISOString();
-        dadosUpdate.comunidade_sugere_conclusao = false;
-    }
-
-    const { error } = await db.from('ocorrencias').update(dadosUpdate).eq('id', id);
-
-    if (error) { alert("Erro: " + error.message); }
-    else { alert("Salvo!"); fecharModalAdmin(); carregarRelatosExistentes(); }
-    btn.innerText = "💾 SALVAR ALTERAÇÕES"; btn.disabled = false;
+    const {error} = await db.from('ocorrencias').update(update).eq('id', id);
+    if(!error) { alert("Salvo!"); fecharModalAdmin(); carregarRelatosExistentes(); } else alert("Erro.");
+    btn.disabled = false;
 }
 
-window.abrirModalDetalhes = function(dadosUrlCoded) {
-    const r = JSON.parse(decodeURIComponent(dadosUrlCoded));
-    document.getElementById('det-id-relato').innerText = `#${r.id_curto}`;
-
-    let html = `
-        <strong>Criado em:</strong> ${new Date(r.created_at).toLocaleString('pt-BR')} <br>
-        <strong>Usuário:</strong> ${r.identificacao_usuario || 'Anônimo'} <br>
-        <strong>Problema:</strong> ${r.problema} (${r.bloco} - ${r.ambiente}) <br>
-        <strong>Descrição original:</strong> <em>${r.descricao_detalhada}</em> <br>
-        <hr>
-        <strong style="color:green;">Concluído em:</strong> ${r.resolvido_em ? new Date(r.resolvido_em).toLocaleString('pt-BR') : ''} <br>
-        <strong>Encerrado por:</strong> ${r.gerenciado_por || 'Sistema'} <br>
-        <strong>Anotação Admin:</strong> ${r.complemento_admin || '-'} <br>
-    `;
-
-    if(r.foto_url) html += `<br><a href="${r.foto_url}" target="_blank">🖼️ Foto Original</a>`;
-    if(r.foto_conclusao_url) html += `<br><a href="${r.foto_conclusao_url}" target="_blank">🖼️ Foto da Conclusão</a>`;
-
-    document.getElementById('det-conteudo').innerHTML = html;
+window.abrirModalDetalhes = function(json) {
+    const r = JSON.parse(decodeURIComponent(json)); document.getElementById('det-id-relato').innerText = `#${r.id_curto}`;
+    document.getElementById('det-conteudo').innerHTML = `<strong>Problema:</strong> ${r.problema} <br><strong>Descrição:</strong> ${r.descricao_detalhada}<hr><strong>Concluído:</strong> ${new Date(r.resolvido_em).toLocaleDateString()}<br><strong>Nota Admin:</strong> ${r.complemento_admin||'-'}`;
     document.getElementById('modal-detalhes').classList.remove('hidden');
 }
 window.fecharModalDetalhes = function() { document.getElementById('modal-detalhes').classList.add('hidden'); }
 
-async function uploadFoto(arquivo) {
-    const nome = `${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
-    const { data, error } = await db.storage.from('fotos').upload(nome, arquivo);
-    if (error) return null;
-    return db.storage.from('fotos').getPublicUrl(nome).data.publicUrl;
-}
+async function uploadFoto(arq) { const n = `${Date.now()}.jpg`; const {error} = await db.storage.from('fotos').upload(n, arq); return error ? null : db.storage.from('fotos').getPublicUrl(n).data.publicUrl; }
 
-// --- ENVIO DO FORMULÁRIO PRINCIPAL ---
-const form = document.getElementById('form-report');
-if(form) {
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        // VALIDAÇÃO: Se não escolheu o tipo, trava o envio!
-        if (!estado.tipoRelato) {
-            alert("Por favor, selecione se é uma Sugestão de Melhoria ou um Fato Ocorrido.");
-            return;
-        }
-
-        const btn = document.querySelector('.btn-enviar');
-
-        // Nomes corretos das variáveis aqui:
-        const comp = document.getElementById('input-complemento').value;
-        const desc = document.getElementById('input-descricao').value;
-
-        // CORRIGIDO: Agora ele usa 'comp' e 'desc' para validar
-        if(!estado.subcategoria || !comp || !desc.trim()) {
-            alert("Preencha o problema, o local exato e a descrição.");
-            return;
-        }
-
-        btn.innerText = 'Enviando...'; btn.disabled = true;
-
-        let fotoUrl = null;
-        if (document.getElementById('input-foto').files.length > 0) {
-            fotoUrl = await uploadFoto(document.getElementById('input-foto').files[0]);
-        }
-
-        const dados = {
-            device_id: estado.deviceId,
-            tipo: estado.tipoRelato,
-            status: 'pendente',
-            unidade: estado.campusNome,
-            sede: estado.sedeNome,
-            bloco: estado.blocoNome,
-            local: estado.ambienteNome,
-            categoria_grupo: estado.categoriaNome,
-            problema: estado.subcategoria,
-            ambiente: comp,
-            descricao_detalhada: desc,
-            identificacao_usuario: document.getElementById('input-identidade').value,
-            foto_url: fotoUrl,
-            descricao: `${estado.subcategoria} - ${estado.blocoNome}`
-        };
-
-        const { error } = await db.from('ocorrencias').insert([dados]);
-        if (error) {
-            alert('Erro: ' + error.message);
-            btn.disabled = false;
-            btn.innerText = 'Tentar Novamente';
-        } else {
-            mudarTela('step-sucesso');
-            btn.disabled = false;
-            btn.innerText = 'ENVIAR RELATO';
-        }
-    });
-}
-
-function gerarDeviceId() { let id = localStorage.getItem('zelo_device_id'); if (!id) { id = Math.random().toString(36).substring(2, 9); localStorage.setItem('zelo_device_id', id); } estado.deviceId = id; }
+const f = document.getElementById('form-report');
+if(f) f.addEventListener('submit', async(e)=>{
+    e.preventDefault(); if(!estado.tipoRelato) { alert("Selecione a Natureza do Relato."); return; }
+    const btn = document.querySelector('.btn-enviar'); btn.disabled = true;
+    let fUrl = null; if(document.getElementById('input-foto').files.length>0) fUrl = await uploadFoto(document.getElementById('input-foto').files[0]);
+    const {error} = await db.from('ocorrencias').insert([{ device_id: estado.deviceId, tipo: estado.tipoRelato, status: 'pendente', unidade: estado.campusNome, sede: estado.sedeNome, bloco: estado.blocoNome, local: estado.ambienteNome, categoria_grupo: estado.categoriaNome, problema: estado.subcategoria, ambiente: document.getElementById('input-complemento').value, descricao_detalhada: document.getElementById('input-descricao').value, identificacao_usuario: document.getElementById('input-identidade').value, foto_url: fUrl, descricao: `${estado.subcategoria} - ${estado.blocoNome}` }]);
+    if(!error) mudarTela('step-sucesso'); btn.disabled = false;
+});
+function gerarDeviceId() { let id = localStorage.getItem('zelo_device_id'); if(!id) { id = Math.random().toString(36).substring(2,9); localStorage.setItem('zelo_device_id', id); } estado.deviceId = id; }

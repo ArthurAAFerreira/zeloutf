@@ -20,8 +20,10 @@
         .card-btn { background: white; border: 2px solid #eee; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: all 0.2s; width: 100%; font-size: 1rem; font-weight: 600; color: #555; }
         .card-btn:hover { border-color: var(--primary); background: #fffdf0; transform: translateY(-2px); }
         .card-btn span.material-icons-round { font-size: 32px; color: #e6c200; }
-        .card-btn.geral { background: var(--dark); color: var(--primary); border: none; }
-        .card-btn.geral span { color: var(--primary); }
+
+        /* Botão Geral Discreto */
+        .card-btn.geral { background: linear-gradient(135deg, #fdfdfd 0%, #f0f0f0 100%); border: 1px solid #ccc; color: #444; }
+        .card-btn.geral span { color: #666; }
 
         label { font-weight: 600; font-size: 0.9rem; color: #666; display: block; margin-top: 15px; margin-bottom: 5px; }
         select, input, textarea { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; font-family: 'Inter'; }
@@ -35,6 +37,7 @@
 
         .btn-enviar { width: 100%; background: var(--dark); color: var(--primary); padding: 18px; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px; }
         .btn-voltar { background: none; border: none; color: #666; font-size: 14px; cursor: pointer; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+        .btn-relatorio { background: #e8eaf6; color: #3f51b5; font-weight: bold; border: 1px solid #c5cae9; width: 100%; padding: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 15px; cursor: pointer; }
 
         /* Relatos */
         .lista-relatos { margin-top: 20px; border-top: 1px solid #eee; padding-top: 20px; }
@@ -47,11 +50,10 @@
 
         .relato-header { display: flex; justify-content: space-between; font-size: 0.8rem; color: #888; margin-bottom: 5px; }
         .relato-id { font-weight: bold; color: #333; background: #eee; padding: 2px 6px; border-radius: 4px; }
-
         .foto-miniatura { width: 100%; height: 120px; object-fit: cover; border-radius: 8px; margin-top: 10px; cursor: pointer; border: 1px solid #ddd; }
 
         .acoes-linha-1 { display: flex; gap: 10px; margin-top: 12px; border-top: 1px dashed #ccc; padding-top: 10px; }
-        .acoes-linha-2 { display: flex; margin-top: 10px; }
+        .acoes-linha-2 { display: flex; gap: 10px; margin-top: 10px; }
         .btn-acao { flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px; background: white; cursor: pointer; font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 5px; color: #555; transition: 0.2s; }
         .btn-acao:hover { background: #f0f0f0; }
         .btn-acao.reforco { color: #b39700; border-color: #FFD700; background: #fffdf0; }
@@ -63,10 +65,10 @@
         .modal-content { background: white; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; padding: 20px; border-radius: 12px; position: relative; }
         .btn-fechar-modal { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #666; }
         .modal-dados-leitura { background: #f4f4f4; padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 0.85rem; color: #555; }
-
         .area-comunidade-valida { background: #fff3e0; border: 1px solid #ffb74d; padding: 15px; border-radius: 8px; margin-top: 20px; }
 
-        /* Rodapé */
+        .transfer-box { background: #fff9c4; padding: 10px; border-radius: 8px; border: 1px dashed #fbc02d; margin-top: 15px; }
+
         .footer-discreto { text-align: center; padding: 20px; font-size: 0.75rem; color: #aaa; margin-top: auto; width: 100%; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -78,8 +80,19 @@
     </header>
 
     <main class="container">
-        <section id="step-campus" class="step hidden"><h2>Selecione sua Unidade</h2><div class="grid-menu" id="lista-campus"></div></section>
-        <section id="step-sede" class="step hidden"><button class="btn-voltar" onclick="voltar('step-campus')">⬅ Voltar</button><h2>Qual Sede?</h2><div class="list-menu" id="lista-sedes"></div></section>
+        <section id="step-campus" class="step hidden">
+            <h2>Selecione sua Unidade</h2>
+            <div class="grid-menu" id="lista-campus"></div>
+            <button class="btn-relatorio" onclick="abrirRelatorioInteligente('Geral UTFPR')">
+                <span class="material-icons-round">analytics</span> Relatório Inteligente (UTFPR)
+            </button>
+        </section>
+
+        <section id="step-sede" class="step hidden">
+            <button class="btn-voltar" onclick="voltar('step-campus')">⬅ Voltar</button>
+            <h2>Qual Sede?</h2>
+            <div class="list-menu" id="lista-sedes"></div>
+        </section>
 
         <section id="step-bloco" class="step hidden">
             <button class="btn-voltar" onclick="voltar('step-sede')">⬅ Voltar</button>
@@ -92,6 +105,14 @@
                     <input type="number" id="input-busca-id" placeholder="Ex: 15" style="margin-bottom:0;">
                     <button class="card-btn" style="width:auto; padding: 12px;" onclick="buscarRelato()">Buscar</button>
                 </div>
+
+                <button class="btn-relatorio" style="margin-top: 15px;" onclick="abrirRelatorioInteligente('Local')">
+                    <span class="material-icons-round">insights</span> Relatório Inteligente (Unidade)
+                </button>
+
+                <button class="card-btn" style="margin-top: 15px; padding: 12px; font-size: 0.9rem;" onclick="abrirContatos()">
+                    <span class="material-icons-round">contact_support</span> Contato dos Responsáveis
+                </button>
             </div>
         </section>
 
@@ -107,14 +128,18 @@
             </div>
         </section>
 
-        <section id="step-categoria" class="step hidden"><button class="btn-voltar" onclick="voltar('step-ambiente')">⬅ Voltar</button><h2>Qual o problema?</h2><div class="list-menu" id="lista-categorias"></div></section>
+        <section id="step-categoria" class="step hidden">
+            <button class="btn-voltar" onclick="voltar('step-ambiente')">⬅ Voltar</button>
+            <h2>Qual o problema?</h2>
+            <div class="list-menu" id="lista-categorias"></div>
+        </section>
 
         <section id="step-detalhes" class="step hidden">
             <button class="btn-voltar" onclick="voltar('step-categoria')">⬅ Voltar</button>
             <h2>Informe seu Relato</h2>
 
             <form id="form-report">
-                <label>Qual o tipo do relato?</label>
+                <label>Natureza do Relato:</label>
                 <div class="tipo-selector">
                     <div class="tipo-btn" id="btn-melhoria" onclick="selecionarTipo('Melhoria')">
                         💡 Sugestão de Melhoria<br><small>Problemas Existentes</small>
@@ -124,7 +149,7 @@
                     </div>
                 </div>
 
-                <label>Especifique o Assunto:</label>
+                <label>Tipo de Relato:</label>
                 <select id="input-subcategoria" required><option value="">Carregando...</option></select>
 
                 <label>Local Exato (Nº da Sala, Andar):</label>
@@ -162,23 +187,22 @@
         </section>
     </main>
 
-    <div id="modal-comunidade" class="modal-overlay hidden">
+    <div id="modal-contatos" class="modal-overlay hidden">
         <div class="modal-content">
-            <button class="btn-fechar-modal" onclick="fecharModalComunidade()">&times;</button>
-            <h2>📢 Informar Conclusão</h2>
-            <p style="font-size: 0.85rem; color:#666;">Nos ajude a manter o sistema atualizado! A administração será notificada para verificar.</p>
+            <button class="btn-fechar-modal" onclick="fecharModalContatos()">&times;</button>
+            <h2>📞 Contatos dos Responsáveis</h2>
+            <div id="conteudo-contatos" class="modal-dados-leitura" style="font-size: 1rem; text-align: center;"></div>
+        </div>
+    </div>
 
-            <label>E-mail Institucional (*Obrigatório):</label>
-            <input type="email" id="com-email" placeholder="@utfpr.edu.br ou @alunos.utfpr.edu.br" required>
-
-            <label>O que foi feito? (Opcional):</label>
-            <textarea id="com-desc" placeholder="Ex: O professor já arrumou a mesa..."></textarea>
-
-            <label>Foto da Conclusão (Opcional):</label>
-            <input type="file" id="com-foto" accept="image/*" capture="environment">
-
-            <input type="hidden" id="com-id">
-            <button class="btn-enviar" onclick="enviarResolucaoComunidade()">ENVIAR INFORMAÇÃO</button>
+    <div id="modal-ia" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button class="btn-fechar-modal" onclick="fecharModalIA()">&times;</button>
+            <h2>📊 Relatório Inteligente (IA)</h2>
+            <p style="font-size: 0.85rem; color:#666;">Os dados estão sendo processados pela inteligência artificial. Isso pode levar alguns segundos.</p>
+            <div id="conteudo-ia" class="modal-dados-leitura" style="min-height: 150px; text-align: left;">
+                <div style="text-align:center; padding: 20px;">Processando com n8n... 🤖⏳</div>
+            </div>
         </div>
     </div>
 
@@ -189,31 +213,30 @@
 
             <div class="modal-dados-leitura">
                 <strong>Criado em:</strong> <span id="admin-criado"></span><br>
-                <strong>Último Reforço:</strong> <span id="admin-reforco"></span> (<span id="admin-qtd-reforco"></span> likes)<br>
                 <strong>Local:</strong> <span id="admin-local"></span><br>
                 <strong>Problema:</strong> <span id="admin-problema"></span><br>
-                <div style="margin-top: 5px; padding-top: 5px; border-top: 1px solid #ccc;">
-                    <em>"<span id="admin-descricao"></span>"</em>
-                </div>
-                <div id="admin-area-foto-original" style="margin-top: 10px;"></div>
-
-                <div id="admin-alerta-comunidade" class="hidden" style="margin-top: 10px; padding: 10px; background: #fff3e0; border: 1px dashed #ffb74d; border-radius: 6px;">
-                    <strong style="color: #e65100;">📢 Comunidade informou conclusão:</strong><br>
-                    <span id="admin-com-email" style="font-size: 0.8rem;"></span><br>
-                    <em id="admin-com-desc"></em>
-                    <div id="admin-com-foto"></div>
-                </div>
+                <div style="margin-top: 5px; padding-top: 5px; border-top: 1px solid #ccc;"><em>"<span id="admin-descricao"></span>"</em></div>
             </div>
 
-            <label>Status do Relato:</label>
+            <div class="transfer-box">
+                <strong style="display:flex; align-items:center; gap:5px;"><span class="material-icons-round" style="font-size:18px;">move_up</span> Transferir Relato</strong>
+                <select id="admin-transf-bloco" style="margin-top: 10px; margin-bottom: 5px; padding: 8px;">
+                    <option value="">Manter no bloco atual</option>
+                </select>
+                <select id="admin-transf-ambiente" style="margin-bottom: 5px; padding: 8px;">
+                    <option value="">Manter no ambiente atual</option>
+                </select>
+            </div>
+
+            <label style="margin-top: 15px;">Status do Relato:</label>
             <select id="admin-status" style="border-color: var(--primary); font-weight: bold;">
                 <option value="pendente">🔴 Pendente (Aberto)</option>
-                <option value="em_verificacao">🔵 Em Verificação (Sendo atendido)</option>
+                <option value="em_verificacao">🔵 Em Verificação / Acatado</option>
                 <option value="resolvido">✅ Atendido / Concluído</option>
             </select>
 
-            <label>Complemento / Nota Interna (Fica gravado):</label>
-            <textarea id="admin-complemento" placeholder="Anotações da equipe, previsão de conserto, etc..."></textarea>
+            <label>Complemento / Nota Interna:</label>
+            <textarea id="admin-complemento" placeholder="Anotações da equipe..."></textarea>
 
             <label>Adicionar Foto da Conclusão (Opcional):</label>
             <input type="file" id="admin-foto" accept="image/*" capture="environment">
@@ -223,10 +246,25 @@
         </div>
     </div>
 
+    <div id="modal-comunidade" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button class="btn-fechar-modal" onclick="fecharModalComunidade()">&times;</button>
+            <h2>📢 Informar Conclusão</h2>
+            <label>E-mail Institucional (*Obrigatório):</label>
+            <input type="email" id="com-email" required>
+            <label>O que foi feito? (Opcional):</label>
+            <textarea id="com-desc"></textarea>
+            <label>Foto (Opcional):</label>
+            <input type="file" id="com-foto" accept="image/*">
+            <input type="hidden" id="com-id">
+            <button class="btn-enviar" onclick="enviarResolucaoComunidade()">ENVIAR INFORMAÇÃO</button>
+        </div>
+    </div>
+
     <div id="modal-detalhes" class="modal-overlay hidden">
         <div class="modal-content">
             <button class="btn-fechar-modal" onclick="fecharModalDetalhes()">&times;</button>
-            <h2 style="margin-top: 0;">📄 Detalhes do Relato <span id="det-id-relato"></span></h2>
+            <h2 style="margin-top: 0;">📄 Detalhes <span id="det-id-relato"></span></h2>
             <div id="det-conteudo" class="modal-dados-leitura" style="font-size: 0.95rem;"></div>
         </div>
     </div>
