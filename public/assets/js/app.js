@@ -102,7 +102,7 @@ window.abrirContatos = function() {
 }
 window.fecharModalContatos = function() { document.getElementById('modal-contatos').classList.add('hidden'); }
 
-// --- INTEGRAÇÃO COM N8N (WEBHOOK ATIVADO) ---
+// --- INTEGRAÇÃO COM N8N (VIA GET) ---
 window.abrirRelatorioInteligente = async function(tipo) {
     const senha = prompt("Acesso Restrito: Digite a Senha Mestre para IA");
     if (!senha || typeof SENHAS_MESTRE === 'undefined' || !SENHAS_MESTRE[senha]) { alert("Acesso Negado."); return; }
@@ -110,24 +110,25 @@ window.abrirRelatorioInteligente = async function(tipo) {
     document.getElementById('modal-ia').classList.remove('hidden');
     document.getElementById('conteudo-ia').innerHTML = `<div style="text-align:center; padding: 20px;">Conectando ao n8n e processando IA... 🤖⏳</div>`;
 
-    // URL real do seu Webhook
-    const n8nWebhookUrl = 'https://n8n.arthuraaferreira.com.br/webhook/ia-zelo-utfpr';
+    // URL base do seu Webhook
+    const n8nWebhookBaseUrl = 'https://n8n.arthuraaferreira.com.br/webhook/ia-zelo-utfpr';
 
     try {
-        // Envia os dados silenciosamente para o n8n
-        const response = await fetch(n8nWebhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                tipo_relatorio: tipo,
-                unidade: estado.campusNome || 'Geral',
-                solicitante: SENHAS_MESTRE[senha]
-            })
+        // Como é GET, embalamos os dados na URL (Query Parameters)
+        const params = new URLSearchParams({
+            tipo_relatorio: tipo,
+            unidade: estado.campusNome || 'Geral',
+            solicitante: SENHAS_MESTRE[senha]
+        });
+
+        // Envia o GET com os dados na URL
+        const response = await fetch(`${n8nWebhookBaseUrl}?${params.toString()}`, {
+            method: 'GET'
         });
 
         if (!response.ok) throw new Error("O n8n retornou um erro ou está offline.");
 
-        // Pega a resposta de texto (HTML/Markdown) do nó "Respond to Webhook" do n8n
+        // Pega a resposta do n8n
         const textoIA = await response.text();
         document.getElementById('conteudo-ia').innerHTML = textoIA;
 
