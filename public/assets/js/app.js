@@ -42,13 +42,12 @@ function renderizarSedes(sedes) {
 function renderizarBlocos(listaBlocos) {
     const container = document.getElementById('lista-blocos'); container.innerHTML = '';
 
-    // ORDENAÇÃO INTELIGENTE
     let blocosFinais = [...listaBlocos];
     blocosFinais = blocosFinais.filter(b => !['Geral', 'Áreas de Acesso', 'Área de Circulação'].includes(b));
-    blocosFinais.sort(); // Ordem alfabética pro resto
+    blocosFinais.sort();
     if (listaBlocos.includes('Área de Circulação')) blocosFinais.unshift('Área de Circulação');
     if (listaBlocos.includes('Áreas de Acesso')) blocosFinais.unshift('Áreas de Acesso');
-    blocosFinais.unshift('Geral'); // Geral sempre no topo
+    blocosFinais.unshift('Geral');
 
     blocosFinais.forEach(blocoNome => {
         const isGeral = (blocoNome === 'Geral');
@@ -103,33 +102,41 @@ window.abrirContatos = function() {
 }
 window.fecharModalContatos = function() { document.getElementById('modal-contatos').classList.add('hidden'); }
 
+// --- INTEGRAÇÃO COM N8N (WEBHOOK ATIVADO) ---
 window.abrirRelatorioInteligente = async function(tipo) {
     const senha = prompt("Acesso Restrito: Digite a Senha Mestre para IA");
-    if (!senha || !SENHAS_MESTRE || !SENHAS_MESTRE[senha]) { alert("Acesso Negado."); return; }
+    if (!senha || typeof SENHAS_MESTRE === 'undefined' || !SENHAS_MESTRE[senha]) { alert("Acesso Negado."); return; }
 
     document.getElementById('modal-ia').classList.remove('hidden');
+    document.getElementById('conteudo-ia').innerHTML = `<div style="text-align:center; padding: 20px;">Conectando ao n8n e processando IA... 🤖⏳</div>`;
 
-    // --- INTEGRAÇÃO COM N8N (Exemplo a ser preenchido) ---
-    // URL do seu Webhook no n8n. Você substituirá essa URL no futuro.
-    const n8nWebhookUrl = 'https://seu-n8n.com/webhook/relatorio-ia';
+    // URL real do seu Webhook
+    const n8nWebhookUrl = 'https://n8n.arthuraaferreira.com.br/webhook/ia-zelo-utfpr';
 
     try {
-        /* DESCOMENTE NO FUTURO:
-        const response = await fetch(n8nWebhookUrl, { method: 'POST', body: JSON.stringify({ tipo: tipo, unidade: estado.campusNome }) });
+        // Envia os dados silenciosamente para o n8n
+        const response = await fetch(n8nWebhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tipo_relatorio: tipo,
+                unidade: estado.campusNome || 'Geral',
+                solicitante: SENHAS_MESTRE[senha]
+            })
+        });
+
+        if (!response.ok) throw new Error("O n8n retornou um erro ou está offline.");
+
+        // Pega a resposta de texto (HTML/Markdown) do nó "Respond to Webhook" do n8n
         const textoIA = await response.text();
         document.getElementById('conteudo-ia').innerHTML = textoIA;
-        */
-        // Simulação enquanto não tem o n8n plugado:
-        setTimeout(() => {
-            document.getElementById('conteudo-ia').innerHTML = `<h3>Relatório: ${tipo}</h3><p>A inteligência artificial analisou os dados. (Aguardando conexão com n8n).</p>`;
-        }, 2000);
+
     } catch (e) {
-        document.getElementById('conteudo-ia').innerHTML = `<p style="color:red;">Erro ao conectar com a Inteligência Artificial.</p>`;
+        document.getElementById('conteudo-ia').innerHTML = `<p style="color:red; text-align:center;">Erro ao conectar com o n8n.<br><small>${e.message}</small></p>`;
     }
 }
 window.fecharModalIA = function() { document.getElementById('modal-ia').classList.add('hidden'); }
 
-// --- RESTO DO CÓDIGO (Busca, Modais Admin, Envio) ---
 window.buscarRelato = async function() {
     const idCurto = document.getElementById('input-busca-id').value; if(!idCurto) return;
     const btn = event.target; btn.innerText = "...";
@@ -154,25 +161,32 @@ async function verificarAvisosComunidade(bloco) {
 
 window.carregarRelatosExistentes = async function() {
     const cAb = document.getElementById('container-relatos-antigos'); const cRe = document.getElementById('container-relatos-resolvidos');
-    cAb.innerHTML = ''; cRe.innerHTML = '';
+    const txtStatus = document.getElementById('txt-status-carregamento');
+    txtStatus.innerText = "Carregando..."; cAb.innerHTML = ''; cRe.innerHTML = '';
+
     let qAb = db.from('ocorrencias').select('*').in('status', ['pendente', 'em_verificacao']).eq('unidade', estado.campusNome).eq('bloco', estado.blocoNome).eq('local', estado.ambienteNome).eq('categoria_grupo', estado.categoriaNome).order('reforcos', {ascending: false}).limit(15);
     if(estado.sedeNome) qAb = qAb.eq('sede', estado.sedeNome);
+
     const d = new Date(); d.setDate(d.getDate() - 7);
     let qRe = db.from('ocorrencias').select('*').eq('status', 'resolvido').gte('resolvido_em', d.toISOString()).eq('unidade', estado.campusNome).eq('bloco', estado.blocoNome).eq('local', estado.ambienteNome).eq('categoria_grupo', estado.categoriaNome).order('resolvido_em', {ascending: false}).limit(10);
     if(estado.sedeNome) qRe = qRe.eq('sede', estado.sedeNome);
+
     const [rAb, rRe] = await Promise.all([qAb, qRe]);
-    if(rAb.data && rAb.data.length > 0) rAb.data.forEach(r => cAb.appendChild(criarCardAberto(r))); else cAb.innerHTML = '<p style="color:#999; text-align:center;">Nenhum aqui.</p>';
+    txtStatus.innerText = "📋 Relatos Abertos e em Andamento";
+
+    if(rAb.data && rAb.data.length > 0) rAb.data.forEach(r => cAb.appendChild(criarCardAberto(r))); else cAb.innerHTML = '<p style="color:#999; text-align:center;">Nenhum relato aberto aqui.</p>';
     if(rRe.data && rRe.data.length > 0) rRe.data.forEach(r => cRe.appendChild(criarCardResolvido(r))); else cRe.innerHTML = '<p style="color:#ccc; text-align:center;">Nenhum concluído recentemente.</p>';
 }
 
 function criarCardAberto(r) {
     const d = document.createElement('div');
-    const isVer = r.status === 'em_verificacao'; const hasCom = r.comunidade_sugere_conclusao;
+    const isVer = r.status === 'em_verificacao'; const hasCom = r.comunidade_sugere_conclusao; const isPen = r.status === 'pendente';
     d.className = `relato-item ${r.tipo ? r.tipo.toLowerCase() : 'reclamação'} ${isVer ? 'verificacao' : ''} ${hasCom ? 'comunidade-alerta' : ''}`;
     let bHtml = '';
-    if(r.status === 'pendente') bHtml += `<span style="background:#ff9800; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold;">🔴 Aberto</span> `;
+    if(isPen) bHtml += `<span style="background:#ff9800; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold;">🔴 Aberto</span> `;
     if(isVer) bHtml += `<span style="background:#2196F3; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold;">🔵 Em Verificação / Acatado</span> `;
     if(hasCom) bHtml += `<span style="background:#e65100; color:white; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:bold;">📢 Validar Conclusão</span>`;
+
     d.innerHTML = `
         <div style="margin-bottom: 5px;">${bHtml}</div>
         <div class="relato-header"><span>${new Date(r.created_at).toLocaleDateString('pt-BR')} <span class="relato-id">#${r.id_curto || ''}</span></span> <strong>${r.tipo === 'Melhoria' ? '💡 Sugestão' : '⚠ Fato'}</strong></div>
@@ -229,6 +243,15 @@ window.abrirModalAdmin = function(json) {
     document.getElementById('admin-local').innerText = `${r.bloco} - ${r.ambiente}`;
     document.getElementById('admin-problema').innerText = r.problema;
     document.getElementById('admin-descricao').innerText = r.descricao_detalhada || '';
+
+    const alertaCom = document.getElementById('admin-alerta-comunidade');
+    if(r.comunidade_sugere_conclusao) {
+        alertaCom.classList.remove('hidden');
+        document.getElementById('admin-com-email').innerText = `Por: ${r.comunidade_email}`;
+        document.getElementById('admin-com-desc').innerText = r.comunidade_descricao || 'Sem descrição extra';
+        document.getElementById('admin-com-foto').innerHTML = r.comunidade_foto_url ? `<br><a href="${r.comunidade_foto_url}" target="_blank">🖼️ Ver foto enviada pela comunidade</a>` : '';
+    } else { alertaCom.classList.add('hidden'); }
+
     document.getElementById('admin-status').value = r.status || 'pendente';
     document.getElementById('admin-complemento').value = r.complemento_admin || '';
 
@@ -236,6 +259,33 @@ window.abrirModalAdmin = function(json) {
     estado.adminLogado = SENHAS_MESTRE[senha]; document.getElementById('modal-admin').classList.remove('hidden');
 }
 window.fecharModalAdmin = function() { document.getElementById('modal-admin').classList.add('hidden'); }
+
+// --- NOVA FUNÇÃO: RECUSAR VALIDAÇÃO E LIMPAR DADOS ---
+window.recusarValidacaoComunidade = async function() {
+    if(!confirm("Tem certeza que deseja recusar essa informação? A foto e os dados enviados pela comunidade serão apagados do sistema.")) return;
+
+    const id = document.getElementById('admin-uuid').value;
+    const btn = event.target;
+    const textoOriginal = btn.innerText;
+    btn.innerText = "Apagando..."; btn.disabled = true;
+
+    // Atualiza o banco, limpando (null) as colunas da comunidade
+    const { error } = await db.from('ocorrencias').update({
+        comunidade_sugere_conclusao: false,
+        comunidade_email: null,
+        comunidade_descricao: null,
+        comunidade_foto_url: null
+    }).eq('id', id);
+
+    if (error) {
+        alert("Erro ao recusar: " + error.message);
+        btn.innerText = textoOriginal; btn.disabled = false;
+    } else {
+        alert("Validação recusada e dados limpos com sucesso.");
+        fecharModalAdmin();
+        carregarRelatosExistentes();
+    }
+}
 
 window.salvarGerenciamento = async function() {
     const id = document.getElementById('admin-uuid').value; const status = document.getElementById('admin-status').value;
@@ -246,7 +296,6 @@ window.salvarGerenciamento = async function() {
     if(document.getElementById('admin-foto').files.length > 0) update.foto_conclusao_url = await uploadFoto(document.getElementById('admin-foto').files[0]);
     if(status === 'resolvido') { update.resolvido_em = new Date().toISOString(); update.comunidade_sugere_conclusao = false; }
 
-    // Aplica transferência se o admin escolheu algo diferente do atual
     if(transfBloco) update.bloco = transfBloco;
     if(transfAmbiente) update.local = transfAmbiente;
 
@@ -268,8 +317,11 @@ const f = document.getElementById('form-report');
 if(f) f.addEventListener('submit', async(e)=>{
     e.preventDefault(); if(!estado.tipoRelato) { alert("Selecione a Natureza do Relato."); return; }
     const btn = document.querySelector('.btn-enviar'); btn.disabled = true;
+    const comp = document.getElementById('input-complemento').value; const desc = document.getElementById('input-descricao').value;
+    if(!estado.subcategoria || !comp || !desc.trim()) { alert("Preencha o problema, o local exato e a descrição."); btn.disabled = false; return; }
+
     let fUrl = null; if(document.getElementById('input-foto').files.length>0) fUrl = await uploadFoto(document.getElementById('input-foto').files[0]);
-    const {error} = await db.from('ocorrencias').insert([{ device_id: estado.deviceId, tipo: estado.tipoRelato, status: 'pendente', unidade: estado.campusNome, sede: estado.sedeNome, bloco: estado.blocoNome, local: estado.ambienteNome, categoria_grupo: estado.categoriaNome, problema: estado.subcategoria, ambiente: document.getElementById('input-complemento').value, descricao_detalhada: document.getElementById('input-descricao').value, identificacao_usuario: document.getElementById('input-identidade').value, foto_url: fUrl, descricao: `${estado.subcategoria} - ${estado.blocoNome}` }]);
+    const {error} = await db.from('ocorrencias').insert([{ device_id: estado.deviceId, tipo: estado.tipoRelato, status: 'pendente', unidade: estado.campusNome, sede: estado.sedeNome, bloco: estado.blocoNome, local: estado.ambienteNome, categoria_grupo: estado.categoriaNome, problema: estado.subcategoria, ambiente: comp, descricao_detalhada: desc, identificacao_usuario: document.getElementById('input-identidade').value, foto_url: fUrl, descricao: `${estado.subcategoria} - ${estado.blocoNome}` }]);
     if(!error) mudarTela('step-sucesso'); btn.disabled = false;
 });
 function gerarDeviceId() { let id = localStorage.getItem('zelo_device_id'); if(!id) { id = Math.random().toString(36).substring(2,9); localStorage.setItem('zelo_device_id', id); } estado.deviceId = id; }
