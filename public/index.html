@@ -21,7 +21,6 @@
         .card-btn:hover { border-color: var(--primary); background: #fffdf0; transform: translateY(-2px); }
         .card-btn span.material-icons-round { font-size: 32px; color: #e6c200; }
 
-        /* Botão Geral Discreto */
         .card-btn.geral { background: linear-gradient(135deg, #fdfdfd 0%, #f0f0f0 100%); border: 1px solid #ccc; color: #444; }
         .card-btn.geral span { color: #666; }
 
@@ -83,8 +82,8 @@
         <section id="step-campus" class="step hidden">
             <h2>Selecione sua Unidade</h2>
             <div class="grid-menu" id="lista-campus"></div>
-            <button class="btn-relatorio" onclick="abrirRelatorioInteligente('Geral UTFPR')">
-                <span class="material-icons-round">analytics</span> Relatório Inteligente (UTFPR)
+            <button class="btn-relatorio" onclick="abrirRelatorioInteligente('geral')">
+                <span class="material-icons-round">analytics</span> Relatório Inteligente UTFPR
             </button>
         </section>
 
@@ -92,6 +91,10 @@
             <button class="btn-voltar" onclick="voltar('step-campus')">⬅ Voltar</button>
             <h2>Qual Sede?</h2>
             <div class="list-menu" id="lista-sedes"></div>
+
+            <button id="btn-relatorio-campus" class="btn-relatorio" onclick="abrirRelatorioInteligente('campus')">
+                <span class="material-icons-round">analytics</span> Relatório Inteligente
+            </button>
         </section>
 
         <section id="step-bloco" class="step hidden">
@@ -106,8 +109,8 @@
                     <button class="card-btn" style="width:auto; padding: 12px;" onclick="buscarRelato()">Buscar</button>
                 </div>
 
-                <button class="btn-relatorio" style="margin-top: 15px;" onclick="abrirRelatorioInteligente('Local')">
-                    <span class="material-icons-round">insights</span> Relatório Inteligente (Unidade)
+                <button id="btn-relatorio-local" class="btn-relatorio" onclick="abrirRelatorioInteligente('local')">
+                    <span class="material-icons-round">insights</span> Relatório Inteligente
                 </button>
 
                 <button class="card-btn" style="margin-top: 15px; padding: 12px; font-size: 0.9rem;" onclick="abrirContatos()">
@@ -172,7 +175,6 @@
                     <h3 id="txt-status-carregamento" style="margin: 0; font-size: 1rem;">📋 Relatos Abertos e em Andamento</h3>
                     <button onclick="carregarRelatosExistentes()" style="background: none; border: none; cursor: pointer; color: #2196F3; font-size: 0.85rem; font-weight: bold;" title="Atualizar">🔄 Atualizar</button>
                 </div>
-
                 <div id="container-relatos-antigos"></div>
 
                 <h3 style="margin-top: 30px; font-size: 1rem; border-bottom: 2px solid #eee; padding-bottom: 5px;">✅ Relatos Atendidos (Últimos 7 dias)</h3>
@@ -187,18 +189,12 @@
         </section>
     </main>
 
-    <div id="modal-contatos" class="modal-overlay hidden">
-        <div class="modal-content">
-            <button class="btn-fechar-modal" onclick="fecharModalContatos()">&times;</button>
-            <h2>📞 Contatos dos Responsáveis</h2>
-            <div id="conteudo-contatos" class="modal-dados-leitura" style="font-size: 1rem; text-align: center;"></div>
-        </div>
-    </div>
-
     <div id="modal-ia" class="modal-overlay hidden">
         <div class="modal-content">
             <button class="btn-fechar-modal" onclick="fecharModalIA()">&times;</button>
-            <h2>📊 Relatório Inteligente (IA)</h2>
+            <h2 style="margin-bottom: 5px;">📊 Relatório Inteligente (IA)</h2>
+            <h3 id="modal-ia-subtitulo" style="margin-top: 0; margin-bottom: 15px; font-size: 1.1rem; color: #3f51b5;">UTFPR</h3>
+
             <p style="font-size: 0.85rem; color:#666;">Os dados estão sendo processados pela inteligência artificial. Isso pode levar alguns segundos.</p>
             <div id="conteudo-ia" class="modal-dados-leitura" style="min-height: 150px; text-align: left;">
                 <div style="text-align:center; padding: 20px;">Processando com n8n... 🤖⏳</div>
@@ -211,6 +207,14 @@
                     <button class="card-btn" style="width: auto; padding: 12px; background: #e8eaf6; color: #3f51b5; border: 1px solid #c5cae9; font-size: 0.9rem;" onclick="enviarRelatorioEmail()">Enviar</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <div id="modal-contatos" class="modal-overlay hidden">
+        <div class="modal-content">
+            <button class="btn-fechar-modal" onclick="fecharModalContatos()">&times;</button>
+            <h2>📞 Contatos dos Responsáveis</h2>
+            <div id="conteudo-contatos" class="modal-dados-leitura" style="font-size: 1rem; text-align: center;"></div>
         </div>
     </div>
 
@@ -231,7 +235,6 @@
                     <span id="admin-com-email" style="font-size: 0.8rem;"></span><br>
                     <em id="admin-com-desc"></em>
                     <div id="admin-com-foto"></div>
-
                     <button class="card-btn" style="margin-top: 15px; padding: 10px; border: 1px solid #f44336; color: #f44336; width: 100%; font-size: 0.85rem; background: #ffebee;" onclick="recusarValidacaoComunidade()">
                         <span class="material-icons-round" style="font-size: 18px; color: #f44336; margin: 0;">delete_forever</span>
                         Recusar Validação e Limpar Dados
@@ -241,12 +244,8 @@
 
             <div class="transfer-box">
                 <strong style="display:flex; align-items:center; gap:5px;"><span class="material-icons-round" style="font-size:18px;">move_up</span> Transferir Relato</strong>
-                <select id="admin-transf-bloco" style="margin-top: 10px; margin-bottom: 5px; padding: 8px;">
-                    <option value="">Manter no bloco atual</option>
-                </select>
-                <select id="admin-transf-ambiente" style="margin-bottom: 5px; padding: 8px;">
-                    <option value="">Manter no ambiente atual</option>
-                </select>
+                <select id="admin-transf-bloco" style="margin-top: 10px; margin-bottom: 5px; padding: 8px;"><option value="">Manter no bloco atual</option></select>
+                <select id="admin-transf-ambiente" style="margin-bottom: 5px; padding: 8px;"><option value="">Manter no ambiente atual</option></select>
             </div>
 
             <label style="margin-top: 15px;">Status do Relato:</label>

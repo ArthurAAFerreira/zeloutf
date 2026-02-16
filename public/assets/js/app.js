@@ -4,7 +4,7 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const db = typeof supabase !== 'undefined' ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 
 // --- ESTADO GLOBAL ---
-let estado = { campusId: null, campusNome: null, sedeId: null, sedeNome: null, blocoNome: null, ambienteNome: null, categoriaId: null, categoriaNome: null, subcategoria: null, tipoRelato: null, deviceId: null, adminLogado: null, ultimoRelatorioTipo: null };
+let estado = { campusId: null, campusNome: null, sedeId: null, sedeNome: null, blocoNome: null, ambienteNome: null, categoriaId: null, categoriaNome: null, subcategoria: null, tipoRelato: null, deviceId: null, adminLogado: null, ultimoRelatorioUrlSufixo: '', ultimoRelatorioSubtitulo: '' };
 
 document.addEventListener('DOMContentLoaded', () => { gerarDeviceId(); iniciarApp(); window.onpopstate = () => iniciarApp(); });
 
@@ -34,6 +34,11 @@ function renderizarListaCampus() {
 
 function renderizarSedes(sedes) {
     const container = document.getElementById('lista-sedes'); container.innerHTML = '';
+
+    // Atualiza nome do botão do Câmpus
+    const btnRelatorio = document.getElementById('btn-relatorio-campus');
+    if(btnRelatorio) btnRelatorio.innerHTML = `<span class="material-icons-round">analytics</span> Relatório Inteligente UTFPR-${estado.campusId.toUpperCase()}`;
+
     for (const key in sedes) {
         criarBotao(container, 'business', sedes[key].nome, () => { estado.sedeId = key; estado.sedeNome = sedes[key].nome; renderizarBlocos(sedes[key].blocos); mudarTela('step-bloco'); });
     }
@@ -41,6 +46,14 @@ function renderizarSedes(sedes) {
 
 function renderizarBlocos(listaBlocos) {
     const container = document.getElementById('lista-blocos'); container.innerHTML = '';
+
+    // Atualiza nome do botão Local (Câmpus ou Sede)
+    const btnRelatorio = document.getElementById('btn-relatorio-local');
+    if(btnRelatorio) {
+        let nomeSufixo = estado.campusId.toUpperCase();
+        if (estado.sedeId) nomeSufixo += '-' + estado.sedeId.charAt(0).toUpperCase() + estado.sedeId.slice(1);
+        btnRelatorio.innerHTML = `<span class="material-icons-round">insights</span> Relatório Inteligente UTFPR-${nomeSufixo}`;
+    }
 
     let blocosFinais = [...listaBlocos];
     blocosFinais = blocosFinais.filter(b => !['Geral', 'Áreas de Acesso', 'Área de Circulação'].includes(b));
@@ -102,37 +115,54 @@ window.abrirContatos = function() {
 window.fecharModalContatos = function() { document.getElementById('modal-contatos').classList.add('hidden'); }
 
 
-// --- INTEGRAÇÃO COM N8N (URL DINÂMICA POR CÂMPUS) ---
-window.abrirRelatorioInteligente = async function(tipo) {
+// --- INTEGRAÇÃO COM N8N (DINÂMICO) ---
+window.abrirRelatorioInteligente = async function(nivelConsulta) {
     const senha = prompt("Acesso Restrito: Digite a Senha Mestre para IA");
     if (!senha || typeof SENHAS_MESTRE === 'undefined' || !SENHAS_MESTRE[senha]) { alert("Acesso Negado."); return; }
 
     estado.adminLogado = SENHAS_MESTRE[senha];
-    estado.ultimoRelatorioTipo = tipo; // Guarda qual relatório foi gerado para enviar por e-mail depois
 
     document.getElementById('modal-ia').classList.remove('hidden');
     document.getElementById('conteudo-ia').innerHTML = `<div style="text-align:center; padding: 20px;">Conectando ao n8n e processando IA... 🤖⏳</div>`;
-    document.getElementById('area-email-relatorio').classList.add('hidden'); // Esconde o email até carregar
+    document.getElementById('area-email-relatorio').classList.add('hidden');
 
-    // GERA A ROTA DO WEBHOOK DINAMICAMENTE (ex: ia-zelo-utfpr-ct)
-    const campusSufixo = estado.campusId ? estado.campusId : 'geral';
-    const n8nWebhookBaseUrl = `https://n8n.arthuraaferreira.com.br/webhook/ia-zelo-utfpr-${campusSufixo}`;
+    // DEFINIÇÃO DA URL E DO TÍTULO
+    let urlSufixo = '';
+    let subtitulo = 'UTFPR';
+
+    if (nivelConsulta === 'campus') {
+        urlSufixo = `-${estado.campusId}`;
+        subtitulo = `UTFPR-${estado.campusId.toUpperCase()}`;
+    } else if (nivelConsulta === 'local') {
+        urlSufixo = `-${estado.campusId}`;
+        subtitulo = `UTFPR-${estado.campusId.toUpperCase()}`;
+        if (estado.sedeId) {
+            urlSufixo += `-${estado.sedeId}`;
+            subtitulo += `-${estado.sedeId.charAt(0).toUpperCase() + estado.sedeId.slice(1)}`;
+        }
+    }
+
+    // Salva para usar no envio do email
+    estado.ultimoRelatorioUrlSufixo = urlSufixo;
+    estado.ultimoRelatorioSubtitulo = subtitulo;
+
+    document.getElementById('modal-ia-subtitulo').innerText = subtitulo;
+
+    // A URL VAI USAR WEBHOOK-TEST CONFORME SEU PEDIDO (Lembre-se de clicar em Listen no n8n)
+    const n8nWebhookBaseUrl = `https://n8n.arthuraaferreira.com.br/webhook-test/ia-zelo-utfpr${urlSufixo}`;
 
     try {
         const params = new URLSearchParams({
-            tipo_relatorio: tipo,
-            unidade: estado.campusNome || 'Geral',
+            nivel: nivelConsulta,
+            contexto: subtitulo,
             solicitante: estado.adminLogado
         });
 
         const response = await fetch(`${n8nWebhookBaseUrl}?${params.toString()}`, { method: 'GET' });
-
         if (!response.ok) throw new Error("O n8n retornou um erro ou está offline.");
 
         const textoIA = await response.text();
         document.getElementById('conteudo-ia').innerHTML = textoIA;
-
-        // Exibe a opção de enviar por e-mail após carregar com sucesso
         document.getElementById('area-email-relatorio').classList.remove('hidden');
 
     } catch (e) {
@@ -141,7 +171,6 @@ window.abrirRelatorioInteligente = async function(tipo) {
 }
 window.fecharModalIA = function() { document.getElementById('modal-ia').classList.add('hidden'); }
 
-// --- NOVA FUNÇÃO: ENVIAR POR E-MAIL ---
 window.enviarRelatorioEmail = async function() {
     const inputEmail = document.getElementById('input-email-relatorio');
     const emailStr = inputEmail.value.trim();
@@ -150,18 +179,14 @@ window.enviarRelatorioEmail = async function() {
         alert("Por favor, informe um e-mail válido da UTFPR."); return;
     }
 
-    const btn = event.target;
-    const textoOriginal = btn.innerText;
+    const btn = event.target; const textoOriginal = btn.innerText;
     btn.innerText = "Enviando..."; btn.disabled = true;
 
-    // Usa a mesma rota base do câmpus
-    const campusSufixo = estado.campusId ? estado.campusId : 'geral';
-    const url = `https://n8n.arthuraaferreira.com.br/webhook/ia-zelo-utfpr-${campusSufixo}`;
+    // Mantém exatamente a mesma URL-test
+    const url = `https://n8n.arthuraaferreira.com.br/webhook-test/ia-zelo-utfpr${estado.ultimoRelatorioUrlSufixo}`;
 
-    // Passa os dados para o n8n informando que a ação agora é enviar e-mail
     const params = new URLSearchParams({
-        tipo_relatorio: estado.ultimoRelatorioTipo || 'Geral',
-        unidade: estado.campusNome || 'Geral',
+        contexto: estado.ultimoRelatorioSubtitulo,
         solicitante: estado.adminLogado || 'Admin',
         acao: 'enviar_email',
         email_destino: emailStr
@@ -172,7 +197,7 @@ window.enviarRelatorioEmail = async function() {
         if (!response.ok) throw new Error("Erro de conexão com servidor.");
 
         alert("Relatório encaminhado para " + emailStr + " com sucesso!");
-        inputEmail.value = ''; // Limpa o campo
+        inputEmail.value = '';
     } catch (e) {
         alert("Falha ao enviar e-mail: " + e.message);
     }
@@ -181,7 +206,7 @@ window.enviarRelatorioEmail = async function() {
 }
 
 
-// --- RESTO DO SISTEMA (Gerenciamento, Modais e Fetch Supabase) ---
+// --- RESTO DO SISTEMA ---
 window.buscarRelato = async function() {
     const idCurto = document.getElementById('input-busca-id').value; if(!idCurto) return;
     const btn = event.target; btn.innerText = "...";
@@ -310,22 +335,15 @@ window.fecharModalAdmin = function() { document.getElementById('modal-admin').cl
 window.recusarValidacaoComunidade = async function() {
     if(!confirm("Tem certeza que deseja recusar essa informação? A foto e os dados enviados pela comunidade serão apagados do sistema.")) return;
 
-    const id = document.getElementById('admin-uuid').value;
-    const btn = event.target;
-    const textoOriginal = btn.innerText;
+    const id = document.getElementById('admin-uuid').value; const btn = event.target; const textoOriginal = btn.innerText;
     btn.innerText = "Apagando..."; btn.disabled = true;
 
     const { error } = await db.from('ocorrencias').update({
         comunidade_sugere_conclusao: false, comunidade_email: null, comunidade_descricao: null, comunidade_foto_url: null
     }).eq('id', id);
 
-    if (error) {
-        alert("Erro ao recusar: " + error.message);
-        btn.innerText = textoOriginal; btn.disabled = false;
-    } else {
-        alert("Validação recusada e dados limpos com sucesso.");
-        fecharModalAdmin(); carregarRelatosExistentes();
-    }
+    if (error) { alert("Erro ao recusar: " + error.message); btn.innerText = textoOriginal; btn.disabled = false; }
+    else { alert("Validação recusada e dados limpos com sucesso."); fecharModalAdmin(); carregarRelatosExistentes(); }
 }
 
 window.salvarGerenciamento = async function() {
