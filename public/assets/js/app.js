@@ -149,7 +149,7 @@ window.abrirRelatorioInteligente = async function(nivelConsulta) {
     document.getElementById('modal-ia-subtitulo').innerText = subtitulo;
 
     // A URL VAI USAR WEBHOOK-TEST CONFORME SEU PEDIDO (Lembre-se de clicar em Listen no n8n)
-    const n8nWebhookBaseUrl = `https://n8n.arthuraaferreira.com.br/webhook-test/ia-zelo-utfpr${urlSufixo}`;
+    const n8nWebhookBaseUrl = `https://n8n.arthuraaferreira.com.br/webhook/ia-zelo-utfpr${urlSufixo}`;
 
     try {
         const params = new URLSearchParams({
@@ -183,7 +183,7 @@ window.enviarRelatorioEmail = async function() {
     btn.innerText = "Enviando..."; btn.disabled = true;
 
     // Mantém exatamente a mesma URL-test
-    const url = `https://n8n.arthuraaferreira.com.br/webhook-test/ia-zelo-utfpr${estado.ultimoRelatorioUrlSufixo}`;
+    const url = `https://n8n.arthuraaferreira.com.br/webhook/ia-zelo-utfpr${estado.ultimoRelatorioUrlSufixo}`;
 
     const params = new URLSearchParams({
         contexto: estado.ultimoRelatorioSubtitulo,
