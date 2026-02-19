@@ -44,23 +44,26 @@ function renderizarSedes(sedes) {
     }
 }
 
-function renderizarBlocos(listaBlocos) {
+function renderizarBlocos(listaBlocosObj) {
     const container = document.getElementById('lista-blocos'); container.innerHTML = '';
 
-    // Atualiza nome do botão Local (Câmpus ou Sede)
+    // Pega as chaves (nomes dos blocos) do objeto
+    let blocosNomes = Object.keys(listaBlocosObj);
+
+    // Lógica de Ordenação
+    let blocosFinais = blocosNomes.filter(b => !['Geral', 'Áreas de Acesso', 'Área de Circulação'].includes(b));
+    blocosFinais.sort();
+    if (blocosNomes.includes('Área de Circulação')) blocosFinais.unshift('Área de Circulação');
+    if (blocosNomes.includes('Áreas de Acesso')) blocosFinais.unshift('Áreas de Acesso');
+    if (blocosNomes.includes('Geral')) blocosFinais.unshift('Geral');
+
+    // Atualiza Botão Relatório (Mantido igual)
     const btnRelatorio = document.getElementById('btn-relatorio-local');
     if(btnRelatorio) {
         let nomeSufixo = estado.campusId.toUpperCase();
         if (estado.sedeId) nomeSufixo += '-' + estado.sedeId.charAt(0).toUpperCase() + estado.sedeId.slice(1);
         btnRelatorio.innerHTML = `<span class="material-icons-round">insights</span> Relatório Inteligente UTFPR-${nomeSufixo}`;
     }
-
-    let blocosFinais = [...listaBlocos];
-    blocosFinais = blocosFinais.filter(b => !['Geral', 'Áreas de Acesso', 'Área de Circulação'].includes(b));
-    blocosFinais.sort();
-    if (listaBlocos.includes('Área de Circulação')) blocosFinais.unshift('Área de Circulação');
-    if (listaBlocos.includes('Áreas de Acesso')) blocosFinais.unshift('Áreas de Acesso');
-    blocosFinais.unshift('Geral');
 
     blocosFinais.forEach(blocoNome => {
         const isGeral = (blocoNome === 'Geral');
@@ -71,31 +74,68 @@ function renderizarBlocos(listaBlocos) {
         btn.className = isGeral ? 'card-btn geral' : 'card-btn';
         btn.innerHTML = `<span class="material-icons-round">${icone}</span> <span>${blocoNome}</span>`;
         btn.onclick = () => {
-            estado.blocoNome = blocoNome; document.getElementById('titulo-bloco-selecionado').innerText = `Onde no ${blocoNome}?`;
-            renderizarAmbientes(); verificarAvisosComunidade(blocoNome); mudarTela('step-ambiente');
+            estado.blocoNome = blocoNome;
+            document.getElementById('titulo-bloco-selecionado').innerText = `Onde no ${blocoNome}?`;
+            // Passa a lista de IDs de ambiente para a próxima função
+            renderizarAmbientes(listaBlocosObj[blocoNome]);
+            verificarAvisosComunidade(blocoNome);
+            mudarTela('step-ambiente');
         };
         container.appendChild(btn);
     });
 }
 
-function renderizarAmbientes() {
+function renderizarAmbientes(listaIdsAmbientes) {
     const container = document.getElementById('lista-ambientes'); container.innerHTML = '';
-    AMBIENTES_PADRAO.forEach(amb => { criarBotao(container, amb.icone, amb.nome, () => { estado.ambienteNome = amb.nome; renderizarCategorias(); mudarTela('step-categoria'); }); });
+
+    listaIdsAmbientes.forEach(idAmb => {
+        const amb = PROBLEMAS_POR_AMBIENTE[idAmb];
+        if(amb) {
+            criarBotao(container, amb.icone, amb.nome, () => {
+                estado.ambienteId = idAmb; // Guarda o ID (ex: sala_aula_lab)
+                estado.ambienteNome = amb.nome; // Guarda o Nome Bonito
+                renderizarCategorias(amb.categorias);
+                mudarTela('step-categoria');
+            });
+        }
+    });
 }
 
-function renderizarCategorias() {
+function renderizarCategorias(categoriasDoAmbiente) {
     const container = document.getElementById('lista-categorias'); container.innerHTML = '';
-    for (const key in CATEGORIAS) {
-        criarBotao(container, CATEGORIAS[key].icone, CATEGORIAS[key].nome, () => {
-            estado.categoriaId = key; estado.categoriaNome = CATEGORIAS[key].nome;
-            preencherDetalhes(CATEGORIAS[key]); mudarTela('step-detalhes'); carregarRelatosExistentes();
-        });
+
+    // Mapeamento visual das categorias (ícones e nomes bonitos)
+    const MAPA_CATEGORIAS = {
+        'estrutura': { nome: 'Estrutura', icone: 'apartment' },
+        'servicos': { nome: 'Serviços', icone: 'engineering' },
+        'bens': { nome: 'Bens em Geral', icone: 'chair_alt' }
+    };
+
+    for (const key in categoriasDoAmbiente) {
+        if(MAPA_CATEGORIAS[key]) {
+            criarBotao(container, MAPA_CATEGORIAS[key].icone, MAPA_CATEGORIAS[key].nome, () => {
+                estado.categoriaId = key;
+                estado.categoriaNome = MAPA_CATEGORIAS[key].nome;
+                // Passa a lista de problemas string direto
+                preencherDetalhes(categoriasDoAmbiente[key]);
+                mudarTela('step-detalhes');
+                carregarRelatosExistentes();
+            });
+        }
     }
 }
 
-function preencherDetalhes(cat) {
-    const select = document.getElementById('input-subcategoria'); select.innerHTML = '<option value="">Selecione o problema...</option>';
-    cat.itens.forEach(item => { const opt = document.createElement('option'); opt.value = item; opt.innerText = item; select.appendChild(opt); });
+function preencherDetalhes(listaProblemas) {
+    const select = document.getElementById('input-subcategoria');
+    select.innerHTML = '<option value="">Selecione o problema...</option>';
+
+    listaProblemas.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item;
+        opt.innerText = item;
+        select.appendChild(opt);
+    });
+
     select.onchange = (e) => estado.subcategoria = e.target.value;
 }
 
