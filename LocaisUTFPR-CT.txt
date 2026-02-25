@@ -1,0 +1,370 @@
+Tipos de Ambientes:
+    Salas de Aula / Laboratórios
+    Áreas Gerais e Administrativas
+    Circulação / Corredor
+    Sanitários
+    Área Externa
+    
+AMBIENTES POR BLOCO
+
+CENTRO
+    Geral
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor
+        Sanitários
+        Área Externa
+    Bloco A
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco B
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco C
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco D
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco E
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco F
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco G
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco H
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco I
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco J
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco K
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco L
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco M - Restaurante Universitário
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco N
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco O - Ginásio
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco P
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco Q
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco R - Mini-ginásio
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco S - DAEFI / Piscina
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco T
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco U
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+    Bloco V
+        Salas de Aula / Laboratórios
+        Áreas Gerais e Administrativas
+        Circulação / Corredor / Acesso
+        Sanitários
+        Área Externa
+NEOVILLE
+    Bloco A
+    Bloco B
+    Bloco C
+    Bloco D
+    Bloco E
+    Bloco F
+    Bloco G
+    Bloco H
+    Bloco J
+    Bloco K
+    Bloco L
+    Bloco M
+    Bloco N
+    Bloco O
+    Bloco P
+    Bloco Q
+    Bloco R
+    Bloco Z
+    Áreas de Acesso
+    Área de Circulação
+ECOVILLE
+    Bloco A
+    Bloco B
+    Bloco C
+    Bloco D
+    Bloco E
+    Bloco F
+    Bloco I
+    Bloco J
+    Bloco K
+    Bloco L
+    Bloco M
+    Bloco N
+    Áreas de Acesso
+    Área de Circulação
+
+
+
+Tipos de Problemas
+    Estrutura
+    Serviços
+    Bens em Geral
+
+Tipos de Relatos
+    Estrutura
+        Iluminação
+        Pintura e Acabamento
+        Elétrica
+        Áreas Verdes
+        Acessibilidade
+        Climatização (Ar/Ventilação)
+        Elevadores
+        Extintores e Mangueiras
+        Portas, Janelas, Vidros, etc
+    Serviços
+        Vigilância e Segurança
+        Limpeza
+        Motorista / Transporte de Bens e Pessoas
+        Capina e Jardinagem
+        Sinalização
+        Rede e Internet
+        Apoio ou Acadêmico
+        Restaurante Universitário
+        Portaria
+        Outros Serviços
+    Bens em Geral
+        Dano ou Quebra
+        Problema e Forma de Utilização
+        Melhorias
+        Falta de bens
+        Demais Questões
+
+
+Tipos de Relatos Padronizados dos Tipos de Problemas por Tipo de Ambiente
+    Salas de Aula / Laboratórios
+        Estrutura
+            Iluminação
+            Pintura e Acabamento
+            Elétrica
+            Acessibilidade
+            Climatização (Ar/Ventilação)
+            Extintores e Mangueiras
+            Portas, Janelas, Vidros, etc
+        Serviços
+            Vigilância e Segurança
+            Limpeza
+            Motorista / Transporte de Bens e Pessoas
+            Sinalização
+            Rede e Internet
+            Apoio ou Acadêmico
+            Outros Serviços
+        Bens em Geral
+            Dano ou Quebra
+            Problema e Forma de Utilização
+            Melhorias
+            Falta de bens
+            Demais Questões
+    Áreas Gerais e Administrativas
+        Estrutura
+            Iluminação
+            Pintura e Acabamento
+            Elétrica
+            Áreas Verdes
+            Acessibilidade
+            Climatização (Ar/Ventilação)
+            Elevadores
+            Extintores e Mangueiras
+            Portas, Janelas, Vidros, etc
+        Serviços
+            Vigilância e Segurança
+            Limpeza
+            Motorista / Transporte de Bens e Pessoas
+            Capina e Jardinagem
+            Sinalização
+            Rede e Internet
+            Apoio ou Acadêmico
+            Restaurante Universitário
+            Portaria
+            Outros Serviços
+        Bens em Geral
+            Dano ou Quebra
+            Problema e Forma de Utilização
+            Melhorias
+            Falta de bens
+            Demais Questões
+    Circulação / Corredor
+        Estrutura
+            Iluminação
+            Pintura e Acabamento
+            Elétrica
+            Áreas Verdes
+            Acessibilidade
+            Climatização (Ar/Ventilação)
+            Elevadores
+            Extintores e Mangueiras
+            Portas, Janelas, Vidros, etc
+        Serviços
+            Vigilância e Segurança
+            Limpeza
+            Capina e Jardinagem
+            Sinalização
+            Rede e Internet
+            Apoio ou Acadêmico
+            Outros Serviços
+        Bens em Geral
+            Dano ou Quebra
+            Problema e Forma de Utilização
+            Melhorias
+            Falta de bens
+            Demais Questões
+    Sanitários
+        Estrutura
+            Iluminação
+            Pintura e Acabamento
+            Elétrica
+            Acessibilidade
+            Climatização (Ar/Ventilação)
+            Extintores e Mangueiras
+            Portas, Janelas, Vidros, etc
+        Serviços
+            Vigilância e Segurança
+            Limpeza
+            Sinalização
+            Outros Serviços
+        Bens em Geral
+            Dano ou Quebra
+            Problema e Forma de Utilização
+            Melhorias
+            Falta de bens
+            Demais Questões
+    Restaurante, Copa e Cozinha (se houver)
+        Estrutura
+            Iluminação
+            Pintura e Acabamento
+            Elétrica
+            Áreas Verdes
+            Acessibilidade
+            Climatização (Ar/Ventilação)
+            Extintores e Mangueiras
+            Portas, Janelas, Vidros, etc
+        Serviços
+            Vigilância e Segurança
+            Limpeza
+            Capina e Jardinagem
+            Sinalização
+            Rede e Internet
+            Apoio ou Acadêmico
+            Restaurante Universitário
+            Outros Serviços
+        Bens em Geral
+            Dano ou Quebra
+            Problema e Forma de Utilização
+            Melhorias
+            Falta de bens
+            Demais Questões
+    Área Externa
+        Estrutura
+            Iluminação
+            Pintura e Acabamento
+            Elétrica
+            Áreas Verdes
+            Acessibilidade
+            Climatização (Ar/Ventilação)
+            Extintores e Mangueiras
+            Portas, Janelas, Vidros, etc
+        Serviços
+            Vigilância e Segurança
+            Limpeza
+            Motorista e Transporte
+            Capina e Jardinagem
+            Sinalização
+            Rede e Internet
+            Apoio ou Acadêmico
+            Portaria
+            Outros Serviços
+        Bens em Geral
+            Dano ou Quebra
+            Problema e Forma de Utilização
+            Melhorias
+            Falta de bens
+            Demais Questões

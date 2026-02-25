@@ -1,0 +1,28 @@
+Estrutura
+    Iluminação
+    Pintura e Acabamento
+    Elétrica
+    Áreas Verdes
+    Acessibilidade
+    Climatização (Ar/Ventilação)
+    Elevadores
+    Extintores e Mangueiras
+    Portas, Janelas, Vidros, etc
+Serviços
+    Vigilância e Segurança
+    Limpeza
+    Motorista e Transporte
+    Capina e Jardinagem
+    Sinalização
+    Rede e Internet
+    Demais Serviços
+    Acadêmico e de Apoio
+    Restaurante Universitário
+    Portaria
+    Outros Serviços
+Bens em Geral
+    Dano ou Quebra
+    Problema e Forma de Utilização
+    Melhorias
+    Falta de bens
+    Demais Questões

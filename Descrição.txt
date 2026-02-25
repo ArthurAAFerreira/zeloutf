@@ -1,0 +1,3 @@
+Web App de Gestão de Facilities e Zeladoria Inteligente.
+É uma plataforma na nuvem (Cloud-native) projetada para descentralizar o apontamento de manutenções e melhorias.
+O sistema possui triagem em tempo real, gestão de status por níveis de acesso, relatórios dinâmicos integrados com Inteligência Artificial e rastreabilidade total de demandas estruturais.
