@@ -14,21 +14,90 @@ window.selecionarTipo = function(tipo) {
     document.getElementById('btn-melhoria').classList.toggle('selected', tipo === 'Melhoria');
 }
 
+function montarUrlComEstado(overrides = {}) {
+    const params = new URLSearchParams();
+
+    const campusId = Object.prototype.hasOwnProperty.call(overrides, 'campusId') ? overrides.campusId : estado.campusId;
+    const sedeId = Object.prototype.hasOwnProperty.call(overrides, 'sedeId') ? overrides.sedeId : estado.sedeId;
+    const blocoNome = Object.prototype.hasOwnProperty.call(overrides, 'blocoNome') ? overrides.blocoNome : estado.blocoNome;
+
+    if (campusId) params.set('c', campusId);
+    if (sedeId) params.set('s', sedeId);
+    if (blocoNome) params.set('b', blocoNome);
+
+    const query = params.toString();
+    return query ? `${window.location.pathname}?${query}` : window.location.pathname;
+}
+
+function abrirBloco(blocoNome, listaIdsAmbientes) {
+    estado.blocoNome = blocoNome;
+    document.getElementById('titulo-bloco-selecionado').innerText = `Onde no ${blocoNome}?`;
+    renderizarAmbientes(listaIdsAmbientes);
+    verificarAvisosComunidade(blocoNome);
+    mudarTela('step-ambiente');
+}
+
 function iniciarApp() {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get('c');
-    if (code && DADOS_UNIDADES[code]) {
-        estado.campusId = code; const campus = DADOS_UNIDADES[code]; estado.campusNome = campus.nome;
-        document.getElementById('campus-name').innerText = `UTFPR - ${campus.nome}`;
-        if (campus.temSedes) { renderizarSedes(campus.sedes); mudarTela('step-sede'); }
-        else { renderizarBlocos(campus.blocos); mudarTela('step-bloco'); }
-    } else { document.getElementById('campus-name').innerText = "ZeloUTF"; renderizarListaCampus(); mudarTela('step-campus'); }
+    const campusId = params.get('c');
+    const sedeId = params.get('s');
+    const blocoNome = params.get('b');
+
+    if (!campusId || !DADOS_UNIDADES[campusId]) {
+        document.getElementById('campus-name').innerText = "ZeloUTF";
+        renderizarListaCampus();
+        mudarTela('step-campus');
+        return;
+    }
+
+    estado.campusId = campusId;
+    const campus = DADOS_UNIDADES[campusId];
+    estado.campusNome = campus.nome;
+    document.getElementById('campus-name').innerText = `UTFPR - ${campus.nome}`;
+
+    if (campus.temSedes) {
+        renderizarSedes(campus.sedes);
+
+        if (sedeId && campus.sedes[sedeId]) {
+            estado.sedeId = sedeId;
+            estado.sedeNome = campus.sedes[sedeId].nome;
+            const blocosDaSede = campus.sedes[sedeId].blocos;
+            renderizarBlocos(blocosDaSede);
+
+            if (blocoNome && blocosDaSede[blocoNome]) {
+                abrirBloco(blocoNome, blocosDaSede[blocoNome]);
+                return;
+            }
+
+            mudarTela('step-bloco');
+            return;
+        }
+
+        estado.sedeId = null;
+        estado.sedeNome = null;
+        mudarTela('step-sede');
+        return;
+    }
+
+    estado.sedeId = null;
+    estado.sedeNome = null;
+    renderizarBlocos(campus.blocos);
+
+    if (blocoNome && campus.blocos[blocoNome]) {
+        abrirBloco(blocoNome, campus.blocos[blocoNome]);
+        return;
+    }
+
+    mudarTela('step-bloco');
 }
 
 function renderizarListaCampus() {
     const container = document.getElementById('lista-campus'); container.innerHTML = '';
     for (const key in DADOS_UNIDADES) {
-        criarBotao(container, 'location_on', DADOS_UNIDADES[key].nome, () => { history.pushState({id: key}, '', window.location.pathname + '?c=' + key); iniciarApp(); });
+        criarBotao(container, 'location_on', DADOS_UNIDADES[key].nome, () => {
+            history.pushState({id: key}, '', `${window.location.pathname}?c=${key}`);
+            iniciarApp();
+        });
     }
 }
 
@@ -40,7 +109,14 @@ function renderizarSedes(sedes) {
     if(btnRelatorio) btnRelatorio.innerHTML = `<span class="material-icons-round">analytics</span> Relatório Inteligente UTFPR-${estado.campusId.toUpperCase()}`;
 
     for (const key in sedes) {
-        criarBotao(container, 'business', sedes[key].nome, () => { estado.sedeId = key; estado.sedeNome = sedes[key].nome; renderizarBlocos(sedes[key].blocos); mudarTela('step-bloco'); });
+        criarBotao(container, 'business', sedes[key].nome, () => {
+            estado.sedeId = key;
+            estado.sedeNome = sedes[key].nome;
+            estado.blocoNome = null;
+            history.pushState({}, '', montarUrlComEstado({ sedeId: key, blocoNome: null }));
+            renderizarBlocos(sedes[key].blocos);
+            mudarTela('step-bloco');
+        });
     }
 }
 
@@ -74,12 +150,8 @@ function renderizarBlocos(listaBlocosObj) {
         btn.className = isGeral ? 'card-btn geral' : 'card-btn';
         btn.innerHTML = `<span class="material-icons-round">${icone}</span> <span>${blocoNome}</span>`;
         btn.onclick = () => {
-            estado.blocoNome = blocoNome;
-            document.getElementById('titulo-bloco-selecionado').innerText = `Onde no ${blocoNome}?`;
-            // Passa a lista de IDs de ambiente para a próxima função
-            renderizarAmbientes(listaBlocosObj[blocoNome]);
-            verificarAvisosComunidade(blocoNome);
-            mudarTela('step-ambiente');
+            history.pushState({}, '', montarUrlComEstado({ blocoNome }));
+            abrirBloco(blocoNome, listaBlocosObj[blocoNome]);
         };
         container.appendChild(btn);
     });
@@ -145,7 +217,31 @@ function criarBotao(container, icone, texto, onClick) {
 }
 
 window.mudarTela = function(id) { document.querySelectorAll('.step').forEach(el => el.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
-window.voltar = function(step) { if (step === 'step-sede' && !DADOS_UNIDADES[estado.campusId].temSedes) { history.pushState({}, '', window.location.pathname); iniciarApp(); return; } if (step === 'step-campus') { history.pushState({}, '', window.location.pathname); iniciarApp(); } else { mudarTela(step); } };
+window.voltar = function(step) {
+    if (step === 'step-sede' && !DADOS_UNIDADES[estado.campusId].temSedes) {
+        history.pushState({}, '', window.location.pathname);
+        iniciarApp();
+        return;
+    }
+
+    if (step === 'step-campus') {
+        history.pushState({}, '', window.location.pathname);
+        iniciarApp();
+        return;
+    }
+
+    if (step === 'step-sede') {
+        history.pushState({}, '', montarUrlComEstado({ sedeId: null, blocoNome: null }));
+        iniciarApp();
+        return;
+    }
+
+    if (step === 'step-bloco') {
+        history.pushState({}, '', montarUrlComEstado({ blocoNome: null }));
+    }
+
+    mudarTela(step);
+};
 
 window.abrirContatos = function() {
     const contato = DADOS_UNIDADES[estado.campusId]?.contato || 'Contato não cadastrado.';
