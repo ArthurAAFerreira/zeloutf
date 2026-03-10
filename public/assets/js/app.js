@@ -16,8 +16,7 @@ window.selecionarTipo = function(tipo) {
 
 function iniciarApp() {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get('c');
-    const rota = parsearRota(code);
+    const rota = parsearRota(params);
 
     if (!rota) {
         document.getElementById('campus-name').innerText = "ZeloUTF";
@@ -68,9 +67,48 @@ function iniciarApp() {
     mudarTela('step-ambiente');
 }
 
-function parsearRota(code) {
+function parsearRota(params) {
+    const code = params.get('c');
     if (!code) return null;
 
+    if (code.includes('.')) {
+        return parsearRotaLegada(code);
+    }
+
+    const campusId = normalizarToken(code);
+    const campus = DADOS_UNIDADES[campusId];
+    if (!campus) return null;
+
+    const rota = { campusId, sedeId: null, blocoNome: null };
+
+    if (campus.temSedes) {
+        const sedeId = normalizarToken(params.get('s'));
+        if (!sedeId) return rota;
+        if (!campus.sedes[sedeId]) return null;
+
+        rota.sedeId = sedeId;
+
+        const blocoToken = normalizarToken(params.get('b'));
+        if (!blocoToken) return rota;
+
+        const blocoNome = encontrarBlocoPorToken(campus.sedes[sedeId].blocos, blocoToken);
+        if (!blocoNome) return null;
+
+        rota.blocoNome = blocoNome;
+        return rota;
+    }
+
+    const blocoToken = normalizarToken(params.get('b'));
+    if (!blocoToken) return rota;
+
+    const blocoNome = encontrarBlocoPorToken(campus.blocos, blocoToken);
+    if (!blocoNome) return null;
+
+    rota.blocoNome = blocoNome;
+    return rota;
+}
+
+function parsearRotaLegada(code) {
     const partes = code.split('.').filter(Boolean).map(normalizarToken);
     const campusId = partes[0];
     const campus = DADOS_UNIDADES[campusId];
@@ -105,7 +143,6 @@ function parsearRota(code) {
     return rota;
 }
 
-
 function normalizarToken(valor) {
     return (valor || '').toString().trim().toLowerCase();
 }
@@ -127,18 +164,19 @@ function encontrarBlocoPorToken(blocosObj, blocoToken) {
     return Object.keys(blocosObj).find(blocoNome => tokenizarBloco(blocoNome) === tokenNormalizado) || null;
 }
 
-function gerarCodigoRota(campusId, sedeId = null, blocoNome = null) {
-    const partes = [campusId];
-    if (sedeId) partes.push(sedeId);
-    if (blocoNome) partes.push(tokenizarBloco(blocoNome));
-    return partes.join('.');
+function gerarBuscaRota(campusId, sedeId = null, blocoNome = null) {
+    const params = new URLSearchParams();
+    params.set('c', normalizarToken(campusId));
+    if (sedeId) params.set('s', normalizarToken(sedeId));
+    if (blocoNome) params.set('b', tokenizarBloco(blocoNome).toUpperCase());
+    return `?${params.toString()}`;
 }
 
 function renderizarListaCampus() {
     const container = document.getElementById('lista-campus'); container.innerHTML = '';
     for (const key in DADOS_UNIDADES) {
         criarBotao(container, 'location_on', DADOS_UNIDADES[key].nome, () => {
-            history.pushState({id: key}, '', window.location.pathname + '?c=' + gerarCodigoRota(key));
+            history.pushState({id: key}, '', window.location.pathname + gerarBuscaRota(key));
             iniciarApp();
         });
     }
@@ -155,7 +193,7 @@ function renderizarSedes(sedes) {
         criarBotao(container, 'business', sedes[key].nome, () => {
             estado.sedeId = key;
             estado.sedeNome = sedes[key].nome;
-            history.pushState({}, '', window.location.pathname + '?c=' + gerarCodigoRota(estado.campusId, key));
+            history.pushState({}, '', window.location.pathname + gerarBuscaRota(estado.campusId, key));
             renderizarBlocos(sedes[key].blocos);
             mudarTela('step-bloco');
         });
@@ -193,7 +231,7 @@ function renderizarBlocos(listaBlocosObj) {
         btn.innerHTML = `<span class="material-icons-round">${icone}</span> <span>${blocoNome}</span>`;
         btn.onclick = () => {
             estado.blocoNome = blocoNome;
-            history.pushState({}, '', window.location.pathname + '?c=' + gerarCodigoRota(estado.campusId, estado.sedeId, blocoNome));
+            history.pushState({}, '', window.location.pathname + gerarBuscaRota(estado.campusId, estado.sedeId, blocoNome));
             document.getElementById('titulo-bloco-selecionado').innerText = `Onde no ${blocoNome}?`;
             // Passa a lista de IDs de ambiente para a próxima função
             renderizarAmbientes(listaBlocosObj[blocoNome]);
@@ -264,7 +302,7 @@ function criarBotao(container, icone, texto, onClick) {
 }
 
 window.mudarTela = function(id) { document.querySelectorAll('.step').forEach(el => el.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
-window.voltar = function(step) { if (step === 'step-sede' && !DADOS_UNIDADES[estado.campusId].temSedes) { history.pushState({}, '', window.location.pathname); iniciarApp(); return; } if (step === 'step-campus') { history.pushState({}, '', window.location.pathname); iniciarApp(); return; } if (step === 'step-sede') { history.pushState({}, '', window.location.pathname + '?c=' + gerarCodigoRota(estado.campusId)); } if (step === 'step-bloco') { history.pushState({}, '', window.location.pathname + '?c=' + gerarCodigoRota(estado.campusId, estado.sedeId)); } mudarTela(step); };
+window.voltar = function(step) { if (step === 'step-sede' && !DADOS_UNIDADES[estado.campusId].temSedes) { history.pushState({}, '', window.location.pathname); iniciarApp(); return; } if (step === 'step-campus') { history.pushState({}, '', window.location.pathname); iniciarApp(); return; } if (step === 'step-sede') { history.pushState({}, '', window.location.pathname + gerarBuscaRota(estado.campusId)); } if (step === 'step-bloco') { history.pushState({}, '', window.location.pathname + gerarBuscaRota(estado.campusId, estado.sedeId)); } mudarTela(step); };
 
 window.abrirContatos = function() {
     const contato = DADOS_UNIDADES[estado.campusId]?.contato || 'Contato não cadastrado.';
