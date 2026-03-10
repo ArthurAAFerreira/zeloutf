@@ -71,7 +71,7 @@ function iniciarApp() {
 function parsearRota(code) {
     if (!code) return null;
 
-    const partes = code.split('.').filter(Boolean);
+    const partes = code.split('.').filter(Boolean).map(normalizarToken);
     const campusId = partes[0];
     const campus = DADOS_UNIDADES[campusId];
     if (!campus) return null;
@@ -85,7 +85,7 @@ function parsearRota(code) {
 
         rota.sedeId = sedeId;
 
-        const blocoToken = partes[2];
+        const blocoToken = normalizarToken(partes[2]);
         if (!blocoToken) return rota;
 
         const blocoNome = encontrarBlocoPorToken(campus.sedes[sedeId].blocos, blocoToken);
@@ -95,7 +95,7 @@ function parsearRota(code) {
         return rota;
     }
 
-    const blocoToken = partes[1];
+    const blocoToken = normalizarToken(partes[1]);
     if (!blocoToken) return rota;
 
     const blocoNome = encontrarBlocoPorToken(campus.blocos, blocoToken);
@@ -103,6 +103,11 @@ function parsearRota(code) {
 
     rota.blocoNome = blocoNome;
     return rota;
+}
+
+
+function normalizarToken(valor) {
+    return (valor || '').toString().trim().toLowerCase();
 }
 
 function tokenizarBloco(blocoNome) {
@@ -118,7 +123,8 @@ function tokenizarBloco(blocoNome) {
 }
 
 function encontrarBlocoPorToken(blocosObj, blocoToken) {
-    return Object.keys(blocosObj).find(blocoNome => tokenizarBloco(blocoNome) === blocoToken) || null;
+    const tokenNormalizado = normalizarToken(blocoToken);
+    return Object.keys(blocosObj).find(blocoNome => tokenizarBloco(blocoNome) === tokenNormalizado) || null;
 }
 
 function gerarCodigoRota(campusId, sedeId = null, blocoNome = null) {
@@ -258,7 +264,7 @@ function criarBotao(container, icone, texto, onClick) {
 }
 
 window.mudarTela = function(id) { document.querySelectorAll('.step').forEach(el => el.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); }
-window.voltar = function(step) { if (step === 'step-sede' && !DADOS_UNIDADES[estado.campusId].temSedes) { history.pushState({}, '', window.location.pathname); iniciarApp(); return; } if (step === 'step-campus') { history.pushState({}, '', window.location.pathname); iniciarApp(); } else { mudarTela(step); } };
+window.voltar = function(step) { if (step === 'step-sede' && !DADOS_UNIDADES[estado.campusId].temSedes) { history.pushState({}, '', window.location.pathname); iniciarApp(); return; } if (step === 'step-campus') { history.pushState({}, '', window.location.pathname); iniciarApp(); return; } if (step === 'step-sede') { history.pushState({}, '', window.location.pathname + '?c=' + gerarCodigoRota(estado.campusId)); } if (step === 'step-bloco') { history.pushState({}, '', window.location.pathname + '?c=' + gerarCodigoRota(estado.campusId, estado.sedeId)); } mudarTela(step); };
 
 window.abrirContatos = function() {
     const contato = DADOS_UNIDADES[estado.campusId]?.contato || 'Contato não cadastrado.';
