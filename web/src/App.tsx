@@ -87,6 +87,7 @@ export function App() {
   const [adminAmbienteRelato, setAdminAmbienteRelato] = useState('');
   const [adminProblemaRelato, setAdminProblemaRelato] = useState('');
   const [adminSenhaValidada, setAdminSenhaValidada] = useState(false);
+  const [alterandoBlocoRelato, setAlterandoBlocoRelato] = useState(false);
   const [validandoSenhaAdmin, setValidandoSenhaAdmin] = useState(false);
   const [salvandoGerenciamentoRelato, setSalvandoGerenciamentoRelato] = useState(false);
   const [mensagemGerenciamentoRelato, setMensagemGerenciamentoRelato] = useState<string | null>(null);
@@ -669,6 +670,7 @@ export function App() {
     setPaginaRelato(relato);
     setAdminKey('');
     setAdminSenhaValidada(false);
+    setAlterandoBlocoRelato(false);
     setStatusAdmin(relato.status);
     setComplementoAdmin(relato.complemento_admin ?? '');
     setAdminTipoRelato(relato.tipo ?? 'Reclamação');
@@ -762,6 +764,49 @@ export function App() {
   const naturezaSelecionada = form.watch('tipo');
   const grupoSelecionado = categoria;
   const nomeSedeAtual = unidade?.temSedes && sedeId ? unidade.sedes[sedeId]?.nome ?? null : null;
+  const unidadePaginaRelato = useMemo<Unidade | null>(() => {
+    if (!paginaRelato?.unidade) return null;
+    const entrada = Object.values(DADOS_UNIDADES).find((item) => item.nome === paginaRelato.unidade);
+    return entrada ?? null;
+  }, [paginaRelato?.unidade]);
+
+  const blocosDisponiveisPaginaRelato = useMemo(() => {
+    if (!paginaRelato || !unidadePaginaRelato) return [] as string[];
+    if (unidadePaginaRelato.temSedes) {
+      const sedeNome = paginaRelato.sede ?? '';
+      const sedeEntrada = Object.values(unidadePaginaRelato.sedes).find((sede) => sede.nome === sedeNome);
+      return sedeEntrada ? Object.keys(sedeEntrada.blocos) : [];
+    }
+    return Object.keys(unidadePaginaRelato.blocos);
+  }, [paginaRelato, unidadePaginaRelato]);
+
+  const gruposDisponiveisPaginaRelato = useMemo(() => {
+    if (!paginaRelato || !unidadePaginaRelato || !adminBlocoRelato) return [] as string[];
+
+    let ambientesDoBloco: string[] = [];
+    if (unidadePaginaRelato.temSedes) {
+      const sedeNome = paginaRelato.sede ?? '';
+      const sedeEntrada = Object.values(unidadePaginaRelato.sedes).find((sede) => sede.nome === sedeNome);
+      ambientesDoBloco = sedeEntrada?.blocos[adminBlocoRelato] ?? [];
+    } else {
+      ambientesDoBloco = unidadePaginaRelato.blocos[adminBlocoRelato] ?? [];
+    }
+
+    return Array.from(
+      new Set(
+        ambientesDoBloco
+          .map((ambienteId) => PROBLEMAS_POR_AMBIENTE[ambienteId]?.nome)
+          .filter((nome): nome is string => Boolean(nome)),
+      ),
+    );
+  }, [paginaRelato, unidadePaginaRelato, adminBlocoRelato]);
+
+  useEffect(() => {
+    if (!paginaRelato || gruposDisponiveisPaginaRelato.length === 0) return;
+    if (!gruposDisponiveisPaginaRelato.includes(adminLocalRelato)) {
+      setAdminLocalRelato(gruposDisponiveisPaginaRelato[0]);
+    }
+  }, [paginaRelato, gruposDisponiveisPaginaRelato, adminLocalRelato]);
 
   if (paginaRelato) {
     return (
@@ -784,8 +829,8 @@ export function App() {
             <Button type="button" onClick={fecharPaginaRelato}>Fechar</Button>
           </div>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-[1.25fr_1fr]">
+            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
               <label className="mb-1 block text-sm font-medium" htmlFor="adminKeyPagina">Senha admin</label>
               <div className="flex gap-2">
                 <input
@@ -806,37 +851,80 @@ export function App() {
                     }
                   }}
                 />
-                <Button type="button" onClick={onValidarSenhaPaginaRelato} disabled={validandoSenhaAdmin}>
-                  {validandoSenhaAdmin ? 'Validando...' : 'Validar'}
+                <Button
+                  type="button"
+                  onClick={onValidarSenhaPaginaRelato}
+                  disabled={validandoSenhaAdmin}
+                  className="px-3"
+                  title="Validar senha"
+                  aria-label="Validar senha"
+                >
+                  {validandoSenhaAdmin ? '...' : <CheckCircle2 className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium" htmlFor="adminStatusPagina">Status atual</label>
-              <select
-                id="adminStatusPagina"
-                className="input"
-                value={statusAdmin}
-                disabled={!adminSenhaValidada}
-                onChange={(e) => setStatusAdmin(e.target.value as 'pendente' | 'em_verificacao' | 'resolvido')}
-              >
-                <option value="pendente">pendente</option>
-                <option value="em_verificacao">em_verificacao (andamento)</option>
-                <option value="resolvido">resolvido</option>
-              </select>
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <label className="block text-sm font-medium" htmlFor="adminStatusPagina">Status</label>
+                <Button
+                  type="button"
+                  className="px-3 py-1.5 text-xs"
+                  disabled={!adminSenhaValidada || blocosDisponiveisPaginaRelato.length === 0}
+                  onClick={() => setAlterandoBlocoRelato((v) => !v)}
+                >
+                  {alterandoBlocoRelato ? 'Fechar bloco' : 'Alterar bloco'}
+                </Button>
+              </div>
+              <div className="grid gap-2">
+                <select
+                  id="adminStatusPagina"
+                  className="input"
+                  value={statusAdmin}
+                  disabled={!adminSenhaValidada}
+                  onChange={(e) => setStatusAdmin(e.target.value as 'pendente' | 'em_verificacao' | 'resolvido')}
+                >
+                  <option value="pendente">Aberto</option>
+                  <option value="em_verificacao">Andamento</option>
+                  <option value="resolvido">Concluído</option>
+                </select>
+
+                {alterandoBlocoRelato ? (
+                  <select
+                    className="input"
+                    value={adminBlocoRelato}
+                    disabled={!adminSenhaValidada || blocosDisponiveisPaginaRelato.length === 0}
+                    onChange={(e) => {
+                      setAdminBlocoRelato(e.target.value);
+                      setMensagemGerenciamentoRelato(null);
+                    }}
+                  >
+                    {blocosDisponiveisPaginaRelato.map((nomeBloco) => (
+                      <option key={nomeBloco} value={nomeBloco}>{nomeBloco}</option>
+                    ))}
+                  </select>
+                ) : null}
+              </div>
             </div>
           </div>
 
           <div className="mt-3 grid gap-3 md:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-medium" htmlFor="adminLocalPagina">Grupo</label>
-              <input
+              <select
                 id="adminLocalPagina"
                 className="input"
                 value={adminLocalRelato}
-                disabled={!adminSenhaValidada}
+                disabled={!adminSenhaValidada || gruposDisponiveisPaginaRelato.length === 0}
                 onChange={(e) => setAdminLocalRelato(e.target.value)}
-              />
+              >
+                {gruposDisponiveisPaginaRelato.length === 0 ? (
+                  <option value={adminLocalRelato || ''}>{adminLocalRelato || 'Sem grupos para este bloco'}</option>
+                ) : (
+                  gruposDisponiveisPaginaRelato.map((nomeGrupo) => (
+                    <option key={nomeGrupo} value={nomeGrupo}>{nomeGrupo}</option>
+                  ))
+                )}
+              </select>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium" htmlFor="adminAmbientePagina">Local</label>
@@ -868,35 +956,47 @@ export function App() {
             <textarea id="descricaoPagina" className="input min-h-20" value={paginaRelato.descricao_detalhada || ''} readOnly />
           </div>
 
-          <div className="mt-3">
-            <label className="mb-1 block text-sm font-medium" htmlFor="adminCompPagina">Complemento</label>
-            <input
-              id="adminCompPagina"
-              className="input"
-              value={complementoAdmin}
-              disabled={!adminSenhaValidada}
-              onChange={(e) => setComplementoAdmin(e.target.value)}
-            />
-          </div>
+          {paginaRelato.foto_url ? (
+            <div className="mt-3 grid gap-3 md:grid-cols-[7rem_1fr] md:items-stretch">
+              <a href={paginaRelato.foto_url} target="_blank" rel="noreferrer" className="inline-block">
+                <img src={paginaRelato.foto_url} alt={`Foto do relato #${paginaRelato.id_curto}`} className="h-20 w-28 rounded-lg border border-zinc-200 object-cover" />
+              </a>
+              <div>
+                <label className="mb-1 block text-sm font-medium" htmlFor="adminCompPagina">Complemento</label>
+                <textarea
+                  id="adminCompPagina"
+                  className="input min-h-20"
+                  value={complementoAdmin}
+                  disabled={!adminSenhaValidada}
+                  onChange={(e) => setComplementoAdmin(e.target.value)}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3">
+              <label className="mb-1 block text-sm font-medium" htmlFor="adminCompPagina">Complemento</label>
+              <textarea
+                id="adminCompPagina"
+                className="input min-h-20"
+                value={complementoAdmin}
+                disabled={!adminSenhaValidada}
+                onChange={(e) => setComplementoAdmin(e.target.value)}
+              />
+            </div>
+          )}
 
           {!adminSenhaValidada ? <p className="mt-3 text-sm text-zinc-600">Valide a senha para liberar os campos de edição e o botão de salvar.</p> : null}
 
+          {mensagemGerenciamentoRelato ? <p className="mt-3 text-sm text-emerald-700">{mensagemGerenciamentoRelato}</p> : null}
+          {erroFeed ? <p className="mt-2 text-sm text-red-700">{erroFeed}</p> : null}
+
           {adminSenhaValidada ? (
-            <div className="mt-4">
+            <div className="mt-5 flex justify-center">
               <Button type="button" variant="primary" disabled={salvandoGerenciamentoRelato} onClick={onSalvarPaginaRelato}>
                 {salvandoGerenciamentoRelato ? 'Salvando...' : 'Salvar'}
               </Button>
             </div>
           ) : null}
-
-          {paginaRelato.foto_url ? (
-            <a href={paginaRelato.foto_url} target="_blank" rel="noreferrer" className="mt-4 inline-block">
-              <img src={paginaRelato.foto_url} alt={`Foto do relato #${paginaRelato.id_curto}`} className="h-20 w-28 rounded-lg border border-zinc-200 object-cover" />
-            </a>
-          ) : null}
-
-          {mensagemGerenciamentoRelato ? <p className="mt-3 text-sm text-emerald-700">{mensagemGerenciamentoRelato}</p> : null}
-          {erroFeed ? <p className="mt-2 text-sm text-red-700">{erroFeed}</p> : null}
         </section>
       </div>
     );
