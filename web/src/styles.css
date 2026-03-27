@@ -1,0 +1,251 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.card {
+  @apply rounded-2xl border border-zinc-200 bg-white p-4 shadow-card;
+}
+
+.btn-primary {
+  @apply rounded-xl bg-brand-dark px-4 py-3 font-semibold text-brand-yellow transition hover:opacity-90;
+}
+
+.btn-secondary {
+  @apply rounded-xl border border-zinc-300 bg-white px-4 py-2 font-medium text-zinc-700 transition hover:bg-zinc-50;
+}
+
+.input {
+  @apply w-full rounded-xl border border-zinc-300 px-3 py-2 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200;
+}
+
+.step-card {
+  @apply rounded-2xl border border-zinc-200 bg-white p-6 text-center font-semibold text-zinc-800 transition;
+  @apply hover:border-amber-300 hover:bg-amber-50 hover:shadow-sm;
+}
+
+.step-card-selected {
+  @apply border-amber-400 bg-amber-50 shadow-sm;
+}
+
+.option-card-compact {
+  @apply h-24 w-full p-3 md:h-28;
+}
+
+.choice-wrap {
+  @apply rounded-xl border border-zinc-200 bg-white p-2.5;
+}
+
+.choice-subtitle {
+  @apply mt-2 text-center text-xs text-zinc-500;
+}
+
+.chip-btn {
+  @apply rounded-full border border-zinc-300 bg-white px-3 py-1.5 text-sm font-semibold text-zinc-700 transition;
+  @apply hover:border-zinc-500 hover:bg-zinc-100 hover:text-zinc-900;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background-color 160ms ease;
+}
+
+.chip-btn:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 8px 16px rgba(39, 39, 42, 0.08);
+}
+
+.chip-btn-active {
+  @apply border-amber-500 bg-amber-100 text-zinc-900;
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.25), 0 6px 14px rgba(245, 158, 11, 0.18);
+}
+
+.chip-btn-active:hover {
+  @apply border-amber-500 bg-amber-100;
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.4), 0 10px 18px rgba(245, 158, 11, 0.28);
+}
+
+.choice-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.choice-card-btn {
+  @apply rounded-2xl border border-zinc-200 bg-white px-3 py-3 text-center text-sm font-semibold text-zinc-800 transition;
+  @apply hover:border-zinc-500 hover:bg-zinc-100 hover:text-zinc-900;
+  min-height: 70px;
+}
+
+.choice-card-btn .icon-3d,
+.choice-card-btn .icon-3d-muted {
+  @apply mb-2;
+}
+
+.choice-card-btn-active {
+  @apply border-amber-500 bg-amber-100;
+  box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.22), 0 8px 18px rgba(245, 158, 11, 0.16);
+}
+
+.choice-card-btn-active:hover {
+  @apply border-amber-600 bg-amber-200;
+}
+
+.showcase-model-grid {
+  @apply grid gap-3 md:grid-cols-2 xl:grid-cols-3;
+}
+
+.showcase-model-card {
+  @apply rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm;
+}
+
+.showcase-model-number {
+  @apply text-xs font-semibold uppercase tracking-wide text-zinc-500;
+}
+
+.showcase-model-title {
+  @apply mt-1 text-sm font-semibold text-zinc-900;
+}
+
+.showcase-model-preview {
+  @apply mt-3 flex min-h-12 items-center justify-center;
+}
+
+.btn-glass {
+  @apply rounded-xl border border-white/60 bg-white/30 px-4 py-2 text-sm font-semibold text-zinc-800 backdrop-blur;
+  box-shadow: 0 6px 20px rgba(24, 24, 27, 0.1);
+}
+
+.btn-gradient {
+  @apply rounded-xl px-4 py-2 text-sm font-semibold text-white;
+  background: linear-gradient(135deg, #0f172a 0%, #334155 40%, #0369a1 100%);
+  box-shadow: 0 8px 18px rgba(3, 105, 161, 0.28);
+}
+
+.btn-neon {
+  @apply rounded-xl border border-emerald-300 px-4 py-2 text-sm font-semibold text-emerald-900;
+  background: radial-gradient(circle at top, #d1fae5 0%, #a7f3d0 45%, #6ee7b7 100%);
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.25), 0 0 20px rgba(16, 185, 129, 0.35);
+}
+
+.btn-minimal {
+  @apply rounded-lg border border-zinc-300 bg-zinc-50 px-4 py-2 text-sm font-semibold text-zinc-700;
+}
+
+.btn-outline-strong {
+  @apply rounded-xl border-2 border-zinc-900 bg-white px-4 py-2 text-sm font-semibold text-zinc-900;
+}
+
+.card-hover-lift {
+  @apply transition duration-200 ease-out;
+}
+
+.card-hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(24, 24, 27, 0.1);
+}
+
+.card-top-compact {
+  @apply py-3;
+}
+
+.card-relato-compact {
+  @apply p-3 md:p-4;
+}
+
+.choice-wrap-natureza {
+  background: linear-gradient(180deg, #fffdf7 0%, #fff9eb 100%);
+  border-color: rgba(245, 158, 11, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 10px 20px rgba(245, 158, 11, 0.08);
+}
+
+.choice-wrap-local {
+  background: linear-gradient(180deg, #f8fbff 0%, #eef6ff 100%);
+  border-color: rgba(59, 130, 246, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 10px 20px rgba(59, 130, 246, 0.09);
+}
+
+.choice-wrap-grupo {
+  background: linear-gradient(180deg, #f9fffb 0%, #edfdf4 100%);
+  border-color: rgba(16, 185, 129, 0.24);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 10px 20px rgba(16, 185, 129, 0.08);
+}
+
+.upload-card-compact {
+  @apply rounded-xl border border-zinc-200 bg-white/90 px-3 py-2.5 text-center text-sm font-semibold text-zinc-700 transition;
+  @apply hover:border-amber-400 hover:bg-amber-50;
+  box-shadow: 0 8px 18px rgba(39, 39, 42, 0.08);
+  min-height: 52px;
+}
+
+.upload-card-highlight {
+  @apply border-blue-300 bg-blue-50 text-blue-900;
+  box-shadow: 0 9px 20px rgba(37, 99, 235, 0.14);
+}
+
+.upload-card-highlight:hover {
+  @apply border-blue-400 bg-blue-100;
+}
+
+.icon-3d {
+  @apply mx-auto mb-1.5 h-3.5 w-3.5 text-amber-500;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.9)) drop-shadow(0 2px 2px rgba(120, 73, 0, 0.25));
+}
+
+.icon-3d-muted {
+  @apply mx-auto mb-1.5 h-3.5 w-3.5 text-zinc-500;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.9)) drop-shadow(0 2px 2px rgba(70, 70, 70, 0.2));
+}
+
+.btn-submit-main {
+  @apply rounded-xl bg-zinc-950 px-4 py-3 font-bold uppercase tracking-wide text-brand-yellow;
+}
+
+.badge-brand {
+  @apply inline-flex rounded-full border border-amber-300 bg-zinc-950 px-5 py-2 text-sm font-semibold text-white;
+}
+
+.quick-action {
+  @apply flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-700;
+}
+
+.quick-action-gestao {
+  @apply flex w-full items-center justify-center gap-2 rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm font-semibold text-cyan-800;
+}
+
+.card-gestao {
+  @apply border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-emerald-50;
+}
+
+.crumb-btn {
+  @apply rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-zinc-800 transition hover:border-amber-300 hover:bg-amber-50;
+}
+
+.app-footer {
+  @apply flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-2 text-xs;
+  background: rgba(8, 27, 56, 0.93);
+  color: #ecf4ff;
+  border: 1px solid rgba(170, 210, 255, 0.22);
+  box-shadow: 0 12px 26px rgba(3, 18, 43, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+}
+
+.app-footer-links {
+  @apply flex items-center gap-2;
+}
+
+.app-footer-links a {
+  @apply inline-flex h-8 w-8 items-center justify-center rounded-full transition;
+  border: 1px solid rgba(170, 210, 255, 0.28);
+  color: #d9ebff;
+}
+
+.app-footer-links a:hover {
+  border-color: #8fc8ff;
+  color: #8fc8ff;
+}
+
+.breadcrumb-fly {
+  @apply pointer-events-none fixed z-50 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-zinc-900 shadow-sm;
+  transition: transform 180ms ease-out, opacity 180ms ease-out;
+}

@@ -1,0 +1,125 @@
+{
+  "name": "@oddbird/css-anchor-positioning",
+  "version": "0.9.0",
+  "description": "Polyfill for the proposed CSS anchor positioning spec",
+  "license": "BSD-3-Clause",
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "OddBird <birds@oddbird.net> (oddbird.net)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oddbird/css-anchor-positioning.git"
+  },
+  "bugs": "https://github.com/oddbird/css-anchor-positioning/issues",
+  "homepage": "https://anchor-positioning.oddbird.net",
+  "keywords": [
+    "css",
+    "polyfill",
+    "anchor-positioning"
+  ],
+  "type": "module",
+  "main": "./dist/css-anchor-positioning.umd.cjs",
+  "module": "./dist/css-anchor-positioning.js",
+  "unpkg": "./dist/css-anchor-positioning.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/css-anchor-positioning.js",
+      "require": "./dist/css-anchor-positioning.umd.cjs"
+    },
+    "./fn": {
+      "types": "./dist/index-fn.d.ts",
+      "import": "./dist/css-anchor-positioning-fn.js",
+      "require": "./dist/css-anchor-positioning-fn.umd.cjs"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "fn": [
+        "./dist/index-fn.d.ts"
+      ]
+    }
+  },
+  "files": [
+    "README.md",
+    "src/**/*.ts",
+    "dist/**/*.{ts,js,cjs,map}",
+    "package.json"
+  ],
+  "scripts": {
+    "build": "run-s build:demo build:dist build:fn",
+    "build:dist": "vite build",
+    "build:fn": "cross-env BUILD_FN=1 vite build",
+    "build:wpt": "cross-env BUILD_WPT=1 vite build",
+    "build:demo": "cross-env BUILD_DEMO=1 vite build",
+    "preview": "vite preview",
+    "serve": "vite dev",
+    "tsc": "tsc --noEmit",
+    "tsc:tests": "tsc --project tests/tsconfig.json",
+    "types": "tsc --emitDeclarationOnly",
+    "prettier:check": "prettier --check .",
+    "prettier:fix": "prettier --write .",
+    "eslint:check": "eslint .",
+    "eslint:fix": "npm run eslint:check -- --fix",
+    "format:css": "npm run lint:css -- --fix",
+    "format:js": "run-s prettier:fix eslint:fix tsc tsc:tests",
+    "lint": "run-s format:css format:js",
+    "lint:css": "stylelint \"**/*.css\"",
+    "lint:js": "run-s prettier:check eslint:check tsc tsc:tests",
+    "lint:ci": "run-p lint:css lint:js",
+    "prepack": "run-s build types",
+    "test:unit": "vitest",
+    "test:watch": "npm run test:unit -- --watch",
+    "test:e2e": "NODE_OPTIONS='--no-experimental-strip-types' playwright test tests/e2e/",
+    "test:e2e:ci": "npm run test:e2e -- --browser=all",
+    "test": "run-p test:unit test:e2e",
+    "test:ci": "run-p test:unit test:e2e:ci",
+    "test:wpt": "node --loader ts-node/esm ./tests/wpt.ts"
+  },
+  "dependencies": {
+    "@floating-ui/dom": "^1.7.5",
+    "@types/css-tree": "^2.3.11",
+    "css-tree": "^3.1.0",
+    "nanoid": "^5.1.6"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@playwright/test": "1.43.1",
+    "@rollup/plugin-replace": "^6.0.3",
+    "@types/async": "^3.2.25",
+    "@types/node": "*",
+    "@types/selenium-webdriver": "^4.35.5",
+    "@vitest/coverage-istanbul": "^4.0.18",
+    "@vitest/eslint-plugin": "^1.6.6",
+    "async": "^3.2.6",
+    "browserslist": "^4.28.1",
+    "browserstack-local": "^1.5.8",
+    "cross-env": "^10.1.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "fetch-mock": "^12.6.0",
+    "jsdom": "^28.0.0",
+    "liquidjs": "^10.24.0",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.8.1",
+    "rollup-plugin-bundle-stats": "^4.21.9",
+    "selenium-webdriver": "^4.40.0",
+    "stylelint": "^17.1.0",
+    "stylelint-config-standard": "^40.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.54.0",
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
+  },
+  "sideEffects": [
+    "./src/index.ts",
+    "./dist/css-anchor-positioning.js",
+    "./dist/css-anchor-positioning.umd.cjs"
+  ]
+}
