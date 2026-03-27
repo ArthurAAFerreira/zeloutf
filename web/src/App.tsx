@@ -829,14 +829,14 @@ export function App() {
             <Button type="button" onClick={fecharPaginaRelato}>Fechar</Button>
           </div>
 
-          <div className="mt-4 grid gap-3 lg:grid-cols-[1.25fr_1fr]">
-            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-3">
-              <label className="mb-1 block text-sm font-medium" htmlFor="adminKeyPagina">Senha admin</label>
+          <div className="mt-4 grid gap-2 lg:grid-cols-[1.2fr_1fr] lg:items-end">
+            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-2.5">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-700" htmlFor="adminKeyPagina">Senha admin</label>
               <div className="flex gap-2">
                 <input
                   id="adminKeyPagina"
                   type="password"
-                  className="input"
+                  className="input h-10"
                   value={adminKey}
                   onChange={(e) => {
                     setAdminKey(e.target.value);
@@ -855,7 +855,7 @@ export function App() {
                   type="button"
                   onClick={onValidarSenhaPaginaRelato}
                   disabled={validandoSenhaAdmin}
-                  className="px-3"
+                  className="h-10 w-10 px-0"
                   title="Validar senha"
                   aria-label="Validar senha"
                 >
@@ -863,12 +863,12 @@ export function App() {
                 </Button>
               </div>
             </div>
-            <div>
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-2.5">
               <div className="mb-1 flex items-center justify-between gap-2">
-                <label className="block text-sm font-medium" htmlFor="adminStatusPagina">Status</label>
+                <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700" htmlFor="adminStatusPagina">Status</label>
                 <Button
                   type="button"
-                  className="px-3 py-1.5 text-xs"
+                  className="px-2.5 py-1 text-[11px]"
                   disabled={!adminSenhaValidada || blocosDisponiveisPaginaRelato.length === 0}
                   onClick={() => setAlterandoBlocoRelato((v) => !v)}
                 >
@@ -878,7 +878,7 @@ export function App() {
               <div className="grid gap-2">
                 <select
                   id="adminStatusPagina"
-                  className="input"
+                  className="input h-10"
                   value={statusAdmin}
                   disabled={!adminSenhaValidada}
                   onChange={(e) => setStatusAdmin(e.target.value as 'pendente' | 'em_verificacao' | 'resolvido')}
@@ -890,7 +890,7 @@ export function App() {
 
                 {alterandoBlocoRelato ? (
                   <select
-                    className="input"
+                    className="input h-10"
                     value={adminBlocoRelato}
                     disabled={!adminSenhaValidada || blocosDisponiveisPaginaRelato.length === 0}
                     onChange={(e) => {
