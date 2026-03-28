@@ -10,8 +10,6 @@ import {
   Footprints,
   Globe,
   ImagePlus,
-  Instagram,
-  Mail,
   MapPin,
   Search,
   Send,
@@ -36,6 +34,7 @@ import {
   validarSenhaAdmin,
   type OcorrenciaResumo,
 } from './services/ocorrencias';
+import { AppFooter } from './components/layout/AppFooter';
 import { Button } from './components/ui/Button';
 
 const CATEGORIA_LABEL: Record<CategoriaGrupo, string> = {
@@ -95,6 +94,9 @@ export function App() {
   const [fotoRelatoArquivo, setFotoRelatoArquivo] = useState<File | null>(null);
   const [gestaoAbertos, setGestaoAbertos] = useState<OcorrenciaResumo[]>([]);
   const [gestaoResolvidos, setGestaoResolvidos] = useState<OcorrenciaResumo[]>([]);
+  const [campusGestaoPendente, setCampusGestaoPendente] = useState<string | null>(null);
+  const [senhaGestaoCampus, setSenhaGestaoCampus] = useState('');
+  const [erroSenhaGestaoCampus, setErroSenhaGestaoCampus] = useState<string | null>(null);
   const [naturezaEscolhida, setNaturezaEscolhida] = useState(false);
   const [rastroClique, setRastroClique] = useState<{
     text: string;
@@ -509,8 +511,43 @@ export function App() {
     setModo('relatos');
     setGestaoTela('campus');
     setGestaoCampusId('');
+    setCampusGestaoPendente(null);
+    setSenhaGestaoCampus('');
+    setErroSenhaGestaoCampus(null);
     resetFluxoApartirCampus('');
     window.history.pushState(null, '', '/');
+  }
+
+  function senhasPermitidasPorCampus(campusSelecionado: string) {
+    const id = campusSelecionado.toLowerCase();
+    return [`dirplad${id}`, `dirge${id}`, 'federer'];
+  }
+
+  function solicitarAcessoCampusGestao(campusSelecionado: string) {
+    setCampusGestaoPendente(campusSelecionado);
+    setSenhaGestaoCampus('');
+    setErroSenhaGestaoCampus(null);
+  }
+
+  function validarSenhaCampusGestao() {
+    if (!campusGestaoPendente) return;
+
+    const senhaNormalizada = senhaGestaoCampus.trim().toLowerCase();
+    if (!senhaNormalizada) {
+      setErroSenhaGestaoCampus('Digite a senha do campus para continuar.');
+      return;
+    }
+
+    const permitidas = senhasPermitidasPorCampus(campusGestaoPendente);
+    if (!permitidas.includes(senhaNormalizada)) {
+      setErroSenhaGestaoCampus('Senha incorreta para este campus.');
+      return;
+    }
+
+    setErroSenhaGestaoCampus(null);
+    setSenhaGestaoCampus('');
+    setCampusGestaoPendente(null);
+    abrirPainelGestao(campusGestaoPendente);
   }
 
   function abrirPainelGestao(campusSelecionado: string) {
@@ -520,6 +557,9 @@ export function App() {
 
   function voltarSelecaoCampusGestao() {
     setGestaoTela('campus');
+    setCampusGestaoPendente(null);
+    setSenhaGestaoCampus('');
+    setErroSenhaGestaoCampus(null);
   }
 
   function irParaPontoCaminho(ponto: 'campus' | 'sede' | 'bloco') {
@@ -810,12 +850,13 @@ export function App() {
 
   if (paginaRelato) {
     return (
-      <div className="mx-auto min-h-screen w-full max-w-6xl p-4 md:p-8">
+      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col p-4 md:p-8">
         <header className="mb-6 text-center">
           <button type="button" className="badge-brand" onClick={voltarParaInicioRelatos}>Sistema <span className="text-brand-yellow">ZeloUTF</span> · UTFPR</button>
         </header>
 
-        <section className="card">
+        <main className="flex-1">
+          <section className="card">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs text-zinc-500">Página do Relato #{paginaRelato.id_curto}</p>
@@ -957,15 +998,18 @@ export function App() {
           </div>
 
           {paginaRelato.foto_url ? (
-            <div className="mt-3 grid gap-3 md:grid-cols-[7rem_1fr] md:items-stretch">
-              <a href={paginaRelato.foto_url} target="_blank" rel="noreferrer" className="inline-block">
-                <img src={paginaRelato.foto_url} alt={`Foto do relato #${paginaRelato.id_curto}`} className="h-20 w-28 rounded-lg border border-zinc-200 object-cover" />
-              </a>
+            <div className="mt-3 grid gap-3 md:grid-cols-[8rem_1fr] md:items-start">
+              <div>
+                <label className="mb-1 block text-sm font-medium">Foto</label>
+                <a href={paginaRelato.foto_url} target="_blank" rel="noreferrer" className="inline-block">
+                  <img src={paginaRelato.foto_url} alt={`Foto do relato #${paginaRelato.id_curto}`} className="h-28 w-32 rounded-lg border border-zinc-200 object-cover" />
+                </a>
+              </div>
               <div>
                 <label className="mb-1 block text-sm font-medium" htmlFor="adminCompPagina">Complemento</label>
                 <textarea
                   id="adminCompPagina"
-                  className="input min-h-20"
+                  className="input h-28"
                   value={complementoAdmin}
                   disabled={!adminSenhaValidada}
                   onChange={(e) => setComplementoAdmin(e.target.value)}
@@ -997,16 +1041,21 @@ export function App() {
               </Button>
             </div>
           ) : null}
-        </section>
+          </section>
+        </main>
+
+        <AppFooter className="mt-6 md:mt-auto" />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-6xl p-4 md:p-8">
+    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col p-4 md:p-8">
       <header className="mb-6 text-center">
         <button type="button" className="badge-brand" onClick={voltarParaInicioRelatos}>Sistema <span className="text-brand-yellow">ZeloUTF</span> · UTFPR</button>
       </header>
+
+      <main className="flex-1">
 
       {modo === 'relatos' ? (
         (campusId || nomeSedeAtual || bloco) ? (
@@ -1053,13 +1102,52 @@ export function App() {
                     key={id}
                     type="button"
                     className="step-card"
-                    onClick={() => abrirPainelGestao(id)}
+                    onClick={() => solicitarAcessoCampusGestao(id)}
                   >
                     <ShieldCheck className="icon-3d" />
                     {item.nome}
                   </button>
                 ))}
               </div>
+
+              {campusGestaoPendente ? (
+                <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3">
+                  <p className="text-sm font-semibold text-zinc-800">
+                    Acesso ao campus {DADOS_UNIDADES[campusGestaoPendente]?.nome ?? campusGestaoPendente}
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <input
+                      type="password"
+                      className="input max-w-xs"
+                      value={senhaGestaoCampus}
+                      onChange={(e) => {
+                        setSenhaGestaoCampus(e.target.value);
+                        if (erroSenhaGestaoCampus) setErroSenhaGestaoCampus(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          validarSenhaCampusGestao();
+                        }
+                      }}
+                      placeholder="Digite a senha do campus"
+                    />
+                    <Button type="button" variant="primary" onClick={validarSenhaCampusGestao}>Entrar</Button>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setCampusGestaoPendente(null);
+                        setSenhaGestaoCampus('');
+                        setErroSenhaGestaoCampus(null);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                  {erroSenhaGestaoCampus ? <p className="mt-2 text-sm text-red-700">{erroSenhaGestaoCampus}</p> : null}
+                  <p className="mt-2 text-xs text-zinc-600">Senha padrão: dirplad{campusGestaoPendente.toLowerCase()} ou dirge{campusGestaoPendente.toLowerCase()}.</p>
+                </div>
+              ) : null}
             </section>
           ) : null}
 
@@ -1552,20 +1640,11 @@ export function App() {
         </div>
       ) : null}
 
-      {erroBusca ? <p className="mt-3 text-sm text-red-700">{erroBusca}</p> : null}
-      {mensagemAdmin ? <p className="mt-3 text-sm text-emerald-700">{mensagemAdmin}</p> : null}
+        {erroBusca ? <p className="mt-3 text-sm text-red-700">{erroBusca}</p> : null}
+        {mensagemAdmin ? <p className="mt-3 text-sm text-emerald-700">{mensagemAdmin}</p> : null}
+      </main>
 
-      <footer className="app-footer mt-8">
-        <span>Desenvolvido por Arthur Ferreira | 2026</span>
-        <div className="app-footer-links">
-          <a href="mailto:arthurferreira@utfpr.edu.br" aria-label="Enviar e-mail para Arthur Ferreira">
-            <Mail className="h-4 w-4" />
-          </a>
-          <a href="https://instagram.com/arthuraaferreira" aria-label="Instagram" rel="noreferrer" target="_blank">
-            <Instagram className="h-4 w-4" />
-          </a>
-        </div>
-      </footer>
+      <AppFooter className="mt-6 md:mt-auto" />
     </div>
   );
 }
