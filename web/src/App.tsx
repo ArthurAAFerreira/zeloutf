@@ -36,8 +36,8 @@ import {
 } from './services/ocorrencias';
 import { AppFooter } from './components/layout/AppFooter';
 import { GestaoModal } from './components/gestao/GestaoModal';
-import { DashboardCampus } from './components/dashboard/DashboardCampus';
 import { DashboardGeral } from './components/dashboard/DashboardGeral';
+import { DashboardPage } from './components/dashboard/DashboardPage';
 import { Button } from './components/ui/Button';
 
 const CATEGORIA_LABEL: Record<CategoriaGrupo, string> = {
@@ -53,9 +53,14 @@ function parsearRotaRelato(pathname: string): number | null {
   return Number.isFinite(id) ? id : null;
 }
 
+function parsearRotaDashboard(pathname: string): string | null {
+  const match = /^\/gestao\/([^/]+)\/dashboard$/i.exec(pathname);
+  return match ? match[1] : null;
+}
+
 export function App() {
   const [modo, setModo] = useState<'relatos' | 'gestao'>('relatos');
-  const [gestaoTela, setGestaoTela] = useState<'campus' | 'painel'>('campus');
+  const [gestaoTela, setGestaoTela] = useState<'campus' | 'painel' | 'dashboard'>('campus');
   const [campusId, setCampusId] = useState<string>('');
   const [gestaoCampusId, setGestaoCampusId] = useState<string>('');
   const [sedeId, setSedeId] = useState<string>('');
@@ -102,7 +107,6 @@ export function App() {
   const [erroSenhaGestaoCampus, setErroSenhaGestaoCampus] = useState<string | null>(null);
   const [naturezaEscolhida, setNaturezaEscolhida] = useState(false);
   const [gestaoRelatoAtivo, setGestaoRelatoAtivo] = useState<OcorrenciaResumo | null>(null);
-  const [showDashboard, setShowDashboard] = useState(false);
   const [rastroClique, setRastroClique] = useState<{
     text: string;
     startX: number;
@@ -170,6 +174,14 @@ export function App() {
 
   useEffect(() => {
     async function carregarEstadoInicial() {
+      const campusDash = parsearRotaDashboard(window.location.pathname);
+      if (campusDash) {
+        setModo('gestao');
+        setGestaoCampusId(campusDash);
+        setGestaoTela('dashboard');
+        return;
+      }
+
       if (window.location.pathname === '/gestao') {
         setModo('gestao');
         setGestaoTela('campus');
@@ -237,6 +249,13 @@ export function App() {
 
   useEffect(() => {
     function onPopState() {
+      const campusDash = parsearRotaDashboard(window.location.pathname);
+      if (campusDash) {
+        setGestaoCampusId(campusDash);
+        setGestaoTela('dashboard');
+        return;
+      }
+
       if (window.location.pathname === '/gestao') {
         setPaginaRelato(null);
         setModo('gestao');
@@ -586,6 +605,16 @@ export function App() {
     window.history.pushState(null, '', '/gestao');
   }
 
+  function abrirDashboard() {
+    setGestaoTela('dashboard');
+    window.history.pushState(null, '', `/gestao/${gestaoCampusId}/dashboard`);
+  }
+
+  function voltarDoDashboard() {
+    setGestaoTela('painel');
+    window.history.pushState(null, '', '/gestao');
+  }
+
   function abrirGestaoRelato(r: OcorrenciaResumo) {
     setGestaoRelatoAtivo(r);
   }
@@ -880,6 +909,16 @@ export function App() {
       setAdminLocalRelato(gruposDisponiveisPaginaRelato[0]);
     }
   }, [paginaRelato, gruposDisponiveisPaginaRelato, adminLocalRelato]);
+
+  if (modo === 'gestao' && gestaoTela === 'dashboard' && unidadeGestao) {
+    return (
+      <DashboardPage
+        campusId={gestaoCampusId}
+        campusNome={unidadeGestao.nome}
+        onVoltar={voltarDoDashboard}
+      />
+    );
+  }
 
   if (paginaRelato) {
     return (
@@ -1207,18 +1246,11 @@ export function App() {
                   <button
                     className="quick-action flex-1"
                     type="button"
-                    onClick={() => setShowDashboard((v) => !v)}
+                    onClick={abrirDashboard}
                   >
-                    <BarChart3 className="h-4 w-4" /> {showDashboard ? 'Ocultar Dashboard' : 'Dashboard'}
+                    <BarChart3 className="h-4 w-4" /> Dashboard ↗
                   </button>
                 </div>
-
-                {showDashboard && unidadeGestao ? (
-                  <div className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-                    <h3 className="mb-3 text-sm font-semibold text-zinc-700">Dashboard · {unidadeGestao.nome}</h3>
-                    <DashboardCampus unidade={unidadeGestao.nome} />
-                  </div>
-                ) : null}
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>

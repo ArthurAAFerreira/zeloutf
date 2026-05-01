@@ -339,44 +339,127 @@ export interface EstatisticasCampus {
   porBloco: { bloco: string; abertos: number; resolvidos: number }[];
   porTipo: { tipo: string; total: number }[];
   porStatus: { status: string; label: string; total: number; cor: string }[];
+  porLocal: { local: string; total: number; abertos: number }[];
+  porSede: { sede: string; total: number }[];
+  porCategoria: { categoria: string; label: string; total: number }[];
+  porNatureza: { natureza: string; total: number }[];
+  porMes: { mes: string; label: string; total: number; abertos: number }[];
+  insights: {
+    localMaisProblematico: string;
+    blocoMaisProblematico: string;
+    taxaResolucao: number;
+    mediaReforcosPorRelato: number;
+    mesComMaisRelatos: string;
+    sedeComMaisRelatos: string;
+  };
 }
 
-export async function buscarEstatisticasCampus(unidade: string): Promise<EstatisticasCampus> {
+const CATEGORIA_LABELS: Record<string, string> = {
+  estrutura: 'Estrutura',
+  servicos: 'Serviços',
+  bens: 'Bens em Geral',
+  outro: 'Outros',
+};
+
+const MES_SHORT: Record<string, string> = {
+  '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr',
+  '05': 'Mai', '06': 'Jun', '07': 'Jul', '08': 'Ago',
+  '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez',
+};
+
+const STATUS_META: Record<string, { label: string; cor: string }> = {
+  pendente: { label: 'Aberto', cor: '#f59e0b' },
+  em_verificacao: { label: 'Em andamento', cor: '#3b82f6' },
+  resolvido: { label: 'Concluído', cor: '#10b981' },
+};
+
+export async function buscarEstatisticasCampus(campusId: string): Promise<EstatisticasCampus> {
   const { data, error } = await db
     .schema(DB_SCHEMA)
     .from(DB_TABLE_OCORRENCIAS)
-    .select('status,bloco,tipo,reforcos')
-    .eq('unidade', unidade);
+    .select('status,bloco,tipo,reforcos,local,sede,categoria_grupo,created_at')
+    .in('unidade', unidadesCompativeis(campusId));
 
   if (error) throw error;
 
-  const items = (data ?? []) as { status: string; bloco: string | null; tipo: string | null; reforcos: number | null }[];
+  type Row = {
+    status: string; bloco: string | null; tipo: string | null; reforcos: number | null;
+    local: string | null; sede: string | null; categoria_grupo: string | null; created_at: string | null;
+  };
+  const items = (data ?? []) as Row[];
+
   const blocoMap: Record<string, { abertos: number; resolvidos: number }> = {};
   const tipoMap: Record<string, number> = {};
   const statusMap: Record<string, number> = {};
+  const localMap: Record<string, { total: number; abertos: number }> = {};
+  const sedeMap: Record<string, number> = {};
+  const catMap: Record<string, number> = {};
+  const natMap: Record<string, number> = {};
+  const mesMap: Record<string, { total: number; abertos: number }> = {};
   let totalReforcos = 0;
   let relatosComReforco = 0;
 
   for (const o of items) {
+    const isAberto = o.status === 'pendente' || o.status === 'em_verificacao';
+
     const bloco = o.bloco ?? 'Geral';
     if (!blocoMap[bloco]) blocoMap[bloco] = { abertos: 0, resolvidos: 0 };
-    if (o.status === 'pendente' || o.status === 'em_verificacao') blocoMap[bloco].abertos++;
+    if (isAberto) blocoMap[bloco].abertos++;
     else if (o.status === 'resolvido') blocoMap[bloco].resolvidos++;
 
-    const tipo = o.tipo ?? 'Reclamação';
-    tipoMap[tipo] = (tipoMap[tipo] ?? 0) + 1;
+    tipoMap[o.tipo ?? 'Reclamação'] = (tipoMap[o.tipo ?? 'Reclamação'] ?? 0) + 1;
     statusMap[o.status] = (statusMap[o.status] ?? 0) + 1;
+
+    const local = o.local ?? 'Não especificado';
+    if (!localMap[local]) localMap[local] = { total: 0, abertos: 0 };
+    localMap[local].total++;
+    if (isAberto) localMap[local].abertos++;
+
+    const sede = o.sede ?? 'Principal';
+    sedeMap[sede] = (sedeMap[sede] ?? 0) + 1;
+
+    const cat = o.categoria_grupo ?? 'outro';
+    catMap[cat] = (catMap[cat] ?? 0) + 1;
+
+    const nat = o.tipo === 'Melhoria' ? 'Melhoria' : 'Reclamação';
+    natMap[nat] = (natMap[nat] ?? 0) + 1;
+
+    if (o.created_at) {
+      const d = new Date(o.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      if (!mesMap[key]) mesMap[key] = { total: 0, abertos: 0 };
+      mesMap[key].total++;
+      if (isAberto) mesMap[key].abertos++;
+    }
 
     const r = o.reforcos ?? 0;
     totalReforcos += r;
     if (r > 0) relatosComReforco++;
   }
 
-  const STATUS_META: Record<string, { label: string; cor: string }> = {
-    pendente: { label: 'Aberto', cor: '#f59e0b' },
-    em_verificacao: { label: 'Em andamento', cor: '#3b82f6' },
-    resolvido: { label: 'Concluído', cor: '#10b981' },
-  };
+  const n = items.length || 1;
+
+  const localSorted = Object.entries(localMap)
+    .map(([local, v]) => ({ local, ...v }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 10);
+
+  const blocoSorted = Object.entries(blocoMap).sort(
+    (a, b) => (b[1].abertos + b[1].resolvidos) - (a[1].abertos + a[1].resolvidos),
+  );
+
+  const sedesSorted = Object.entries(sedeMap).sort((a, b) => b[1] - a[1]);
+
+  const mesOrdenados = Object.entries(mesMap)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-12)
+    .map(([key, v]) => ({
+      mes: key,
+      label: `${MES_SHORT[key.slice(5)] ?? key.slice(5)}/${key.slice(2, 4)}`,
+      ...v,
+    }));
+
+  const mesMaisRelatos = Object.entries(mesMap).sort((a, b) => b[1].total - a[1].total)[0];
 
   return {
     totalRelatos: items.length,
@@ -385,17 +468,28 @@ export async function buscarEstatisticasCampus(unidade: string): Promise<Estatis
     totalResolvidos: statusMap.resolvido ?? 0,
     totalReforcos,
     relatosComReforco,
-    porBloco: Object.entries(blocoMap)
-      .map(([bloco, v]) => ({ bloco, ...v }))
-      .sort((a, b) => (b.abertos + b.resolvidos) - (a.abertos + a.resolvidos))
-      .slice(0, 12),
+    porBloco: blocoSorted.map(([bloco, v]) => ({ bloco, ...v })).slice(0, 12),
     porTipo: Object.entries(tipoMap).map(([tipo, total]) => ({ tipo, total })),
     porStatus: Object.entries(statusMap).map(([s, total]) => ({
-      status: s,
-      label: STATUS_META[s]?.label ?? s,
-      cor: STATUS_META[s]?.cor ?? '#94a3b8',
-      total,
+      status: s, label: STATUS_META[s]?.label ?? s, cor: STATUS_META[s]?.cor ?? '#94a3b8', total,
     })),
+    porLocal: localSorted,
+    porSede: sedesSorted.map(([sede, total]) => ({ sede, total })),
+    porCategoria: Object.entries(catMap).map(([categoria, total]) => ({
+      categoria, label: CATEGORIA_LABELS[categoria] ?? categoria, total,
+    })),
+    porNatureza: Object.entries(natMap).map(([natureza, total]) => ({ natureza, total })),
+    porMes: mesOrdenados,
+    insights: {
+      localMaisProblematico: localSorted[0]?.local ?? '-',
+      blocoMaisProblematico: blocoSorted[0]?.[0] ?? '-',
+      taxaResolucao: Math.round(((statusMap.resolvido ?? 0) / n) * 100),
+      mediaReforcosPorRelato: parseFloat((totalReforcos / n).toFixed(1)),
+      mesComMaisRelatos: mesMaisRelatos
+        ? `${MES_SHORT[mesMaisRelatos[0].slice(5)] ?? mesMaisRelatos[0].slice(5)}/${mesMaisRelatos[0].slice(2, 4)}`
+        : '-',
+      sedeComMaisRelatos: sedesSorted[0]?.[0] ?? '-',
+    },
   };
 }
 

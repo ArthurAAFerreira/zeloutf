@@ -14,7 +14,7 @@ import {
 import { buscarEstatisticasCampus, type EstatisticasCampus } from '../../services/ocorrencias';
 
 interface DashboardCampusProps {
-  unidade: string;
+  campusId: string;
 }
 
 function KpiCard({ label, value, cor }: { label: string; value: number; cor?: string }) {
@@ -28,7 +28,7 @@ function KpiCard({ label, value, cor }: { label: string; value: number; cor?: st
   );
 }
 
-export function DashboardCampus({ unidade }: DashboardCampusProps) {
+export function DashboardCampus({ campusId }: DashboardCampusProps) {
   const [stats, setStats] = useState<EstatisticasCampus | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -38,7 +38,7 @@ export function DashboardCampus({ unidade }: DashboardCampusProps) {
       setCarregando(true);
       setErro(null);
       try {
-        const resultado = await buscarEstatisticasCampus(unidade);
+        const resultado = await buscarEstatisticasCampus(campusId);
         setStats(resultado);
       } catch (e) {
         setErro(e instanceof Error ? e.message : 'Falha ao carregar estatísticas.');
@@ -47,7 +47,7 @@ export function DashboardCampus({ unidade }: DashboardCampusProps) {
       }
     }
     void carregar();
-  }, [unidade]);
+  }, [campusId]);
 
   if (carregando) {
     return (
@@ -94,10 +94,6 @@ export function DashboardCampus({ unidade }: DashboardCampusProps) {
                 outerRadius={72}
                 innerRadius={36}
                 dataKey="value"
-                label={({ name, percent }) =>
-                  `${name} ${(percent * 100).toFixed(0)}%`
-                }
-                labelLine={false}
               >
                 {pieData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.cor} />
