@@ -1,2 +1,0 @@
-import { type StyleData } from './utils.js';
-export declare function transformCSS(styleData: StyleData[], inlineStyles?: Map<HTMLElement, Record<string, string>>, cleanup?: boolean): StyleData[];
