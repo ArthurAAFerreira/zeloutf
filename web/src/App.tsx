@@ -913,7 +913,6 @@ export function App() {
   if (modo === 'gestao' && gestaoTela === 'dashboard' && unidadeGestao) {
     return (
       <DashboardPage
-        campusId={gestaoCampusId}
         campusNome={unidadeGestao.nome}
         onVoltar={voltarDoDashboard}
       />

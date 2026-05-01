@@ -7,7 +7,6 @@ import { ArrowLeft, BarChart3, MapPin, RefreshCw, Shield, Star, TrendingUp, Zap 
 import { buscarEstatisticasCampus, type EstatisticasCampus } from '../../services/ocorrencias';
 
 interface DashboardPageProps {
-  campusId: string;
   campusNome: string;
   onVoltar: () => void;
 }
@@ -39,7 +38,7 @@ function InsightItem({ n, cor, icon: Icon, title, value }: { n: number; cor: str
   );
 }
 
-export function DashboardPage({ campusId, campusNome, onVoltar }: DashboardPageProps) {
+export function DashboardPage({ campusNome, onVoltar }: DashboardPageProps) {
   const [stats, setStats] = useState<EstatisticasCampus | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -49,7 +48,7 @@ export function DashboardPage({ campusId, campusNome, onVoltar }: DashboardPageP
     setCarregando(true);
     setErro(null);
     try {
-      const r = await buscarEstatisticasCampus(campusId);
+      const r = await buscarEstatisticasCampus(campusNome);
       setStats(r);
       setAtualizado(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
     } catch (e) {
@@ -59,7 +58,7 @@ export function DashboardPage({ campusId, campusNome, onVoltar }: DashboardPageP
     }
   }
 
-  useEffect(() => { void carregar(); }, [campusId]);
+  useEffect(() => { void carregar(); }, [campusNome]);
 
   const pieData = stats?.porStatus.map((s) => ({ name: s.label, value: s.total, cor: s.cor })) ?? [];
   const maxBloco = Math.max(...(stats?.porBloco.map((b) => b.abertos + b.resolvidos) ?? [1]), 1);
