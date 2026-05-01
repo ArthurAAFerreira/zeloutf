@@ -35,6 +35,9 @@ import {
   type OcorrenciaResumo,
 } from './services/ocorrencias';
 import { AppFooter } from './components/layout/AppFooter';
+import { GestaoModal } from './components/gestao/GestaoModal';
+import { DashboardCampus } from './components/dashboard/DashboardCampus';
+import { DashboardGeral } from './components/dashboard/DashboardGeral';
 import { Button } from './components/ui/Button';
 
 const CATEGORIA_LABEL: Record<CategoriaGrupo, string> = {
@@ -98,6 +101,8 @@ export function App() {
   const [senhaGestaoCampus, setSenhaGestaoCampus] = useState('');
   const [erroSenhaGestaoCampus, setErroSenhaGestaoCampus] = useState<string | null>(null);
   const [naturezaEscolhida, setNaturezaEscolhida] = useState(false);
+  const [gestaoRelatoAtivo, setGestaoRelatoAtivo] = useState<OcorrenciaResumo | null>(null);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [rastroClique, setRastroClique] = useState<{
     text: string;
     startX: number;
@@ -165,6 +170,12 @@ export function App() {
 
   useEffect(() => {
     async function carregarEstadoInicial() {
+      if (window.location.pathname === '/gestao') {
+        setModo('gestao');
+        setGestaoTela('campus');
+        return;
+      }
+
       const idRelato = parsearRotaRelato(window.location.pathname);
       if (idRelato) {
         const relato = await buscarPorIdCurto(idRelato);
@@ -226,6 +237,13 @@ export function App() {
 
   useEffect(() => {
     function onPopState() {
+      if (window.location.pathname === '/gestao') {
+        setPaginaRelato(null);
+        setModo('gestao');
+        setGestaoTela('campus');
+        return;
+      }
+
       const idRelato = parsearRotaRelato(window.location.pathname);
       if (idRelato) {
         void buscarPorIdCurto(idRelato).then((resultado) => {
@@ -562,6 +580,21 @@ export function App() {
     setErroSenhaGestaoCampus(null);
   }
 
+  function entrarModoGestao() {
+    setModo('gestao');
+    setGestaoTela('campus');
+    window.history.pushState(null, '', '/gestao');
+  }
+
+  function abrirGestaoRelato(r: OcorrenciaResumo) {
+    setGestaoRelatoAtivo(r);
+  }
+
+  function fecharGestaoRelato() {
+    setGestaoRelatoAtivo(null);
+    setFeedReloadToken((v) => v + 1);
+  }
+
   function irParaPontoCaminho(ponto: 'campus' | 'sede' | 'bloco') {
     if (ponto === 'campus') {
       setSedeId('');
@@ -850,7 +883,8 @@ export function App() {
 
   if (paginaRelato) {
     return (
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col p-4 md:p-8">
+      <div className="flex min-h-screen flex-col">
+        <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col p-4 md:p-8">
         <header className="mb-6 text-center">
           <button type="button" className="badge-brand" onClick={voltarParaInicioRelatos}>Sistema <span className="text-brand-yellow">ZeloUTF</span> · UTFPR</button>
         </header>
@@ -1044,13 +1078,15 @@ export function App() {
           </section>
         </main>
 
-        <AppFooter className="mt-6 md:mt-auto" />
+        </div>
+        <AppFooter />
       </div>
     );
   }
 
   return (
-    <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col p-4 md:p-8">
+    <div className="flex min-h-screen flex-col">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col p-4 md:p-8">
       <header className="mb-6 text-center">
         <button type="button" className="badge-brand" onClick={voltarParaInicioRelatos}>Sistema <span className="text-brand-yellow">ZeloUTF</span> · UTFPR</button>
       </header>
@@ -1110,6 +1146,8 @@ export function App() {
                 ))}
               </div>
 
+              <DashboardGeral />
+
               {campusGestaoPendente ? (
                 <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3">
                   <p className="text-sm font-semibold text-zinc-800">
@@ -1162,21 +1200,41 @@ export function App() {
                   </div>
                 </div>
 
-                <button className="quick-action-gestao mb-4" type="button">
-                  <BarChart3 className="h-4 w-4" /> Relatório Inteligente
-                </button>
+                <div className="mb-4 flex flex-wrap gap-2">
+                  <button className="quick-action-gestao flex-1" type="button">
+                    <BarChart3 className="h-4 w-4" /> Relatório Inteligente
+                  </button>
+                  <button
+                    className="quick-action flex-1"
+                    type="button"
+                    onClick={() => setShowDashboard((v) => !v)}
+                  >
+                    <BarChart3 className="h-4 w-4" /> {showDashboard ? 'Ocultar Dashboard' : 'Dashboard'}
+                  </button>
+                </div>
+
+                {showDashboard && unidadeGestao ? (
+                  <div className="mb-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+                    <h3 className="mb-3 text-sm font-semibold text-zinc-700">Dashboard · {unidadeGestao.nome}</h3>
+                    <DashboardCampus unidade={unidadeGestao.nome} />
+                  </div>
+                ) : null}
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-indigo-900">Abertos / Em verificação</h3>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       {gestaoAbertos.length === 0 ? <p className="text-sm text-zinc-500">Nenhum relato pendente.</p> : null}
                       {gestaoAbertos.map((r) => (
-                        <div key={r.id} className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-3">
-                          <p className="text-xs text-zinc-500">#{r.id_curto} • {r.bloco} • {r.local}</p>
-                          <p className="mt-1 font-semibold">{r.problema}</p>
-                          <p className="mt-1 text-sm text-zinc-700">{r.descricao_detalhada || '-'}</p>
-                          <div className="mt-2"><Button type="button" onClick={() => { setDetalhe(r); setStatusAdmin(r.status); setComplementoAdmin(r.complemento_admin ?? ''); }}>Atender</Button></div>
+                        <div key={r.id} className="gestao-relato-row">
+                          <div className="min-w-0 flex-1">
+                            <p className="gestao-relato-meta">#{r.id_curto} · {r.bloco} · {r.local}</p>
+                            <p className="gestao-relato-title">{r.problema}</p>
+                            <span className={`status-badge ${r.status === 'em_verificacao' ? 'status-badge-progress' : 'status-badge-open'}`}>
+                              {r.status === 'em_verificacao' ? 'Em andamento' : 'Aberto'}
+                            </span>
+                          </div>
+                          <Button type="button" className="shrink-0 px-3 py-1.5 text-xs" onClick={() => abrirGestaoRelato(r)}>Atender</Button>
                         </div>
                       ))}
                     </div>
@@ -1345,7 +1403,7 @@ export function App() {
                 ) : null}
               </div>
               {etapaNavegacao === 'campus' ? (
-                <Button type="button" className="btn-gradient w-full" onClick={() => { setModo('gestao'); setGestaoTela('campus'); }}>
+                <Button type="button" className="btn-gradient w-full" onClick={entrarModoGestao}>
                   Entrar no Modo Gestão
                 </Button>
               ) : null}
@@ -1642,9 +1700,18 @@ export function App() {
 
         {erroBusca ? <p className="mt-3 text-sm text-red-700">{erroBusca}</p> : null}
         {mensagemAdmin ? <p className="mt-3 text-sm text-emerald-700">{mensagemAdmin}</p> : null}
+
+        {gestaoRelatoAtivo ? (
+          <GestaoModal
+            relato={gestaoRelatoAtivo}
+            onFechar={fecharGestaoRelato}
+            onSalvo={fecharGestaoRelato}
+          />
+        ) : null}
       </main>
 
-      <AppFooter className="mt-6 md:mt-auto" />
+      </div>
+      <AppFooter />
     </div>
   );
 }

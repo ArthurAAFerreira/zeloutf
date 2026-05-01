@@ -329,6 +329,102 @@ export async function validarSenhaAdmin(adminKey: string) {
   }
 }
 
+export interface EstatisticasCampus {
+  totalRelatos: number;
+  totalAbertos: number;
+  totalEmAndamento: number;
+  totalResolvidos: number;
+  totalReforcos: number;
+  relatosComReforco: number;
+  porBloco: { bloco: string; abertos: number; resolvidos: number }[];
+  porTipo: { tipo: string; total: number }[];
+  porStatus: { status: string; label: string; total: number; cor: string }[];
+}
+
+export async function buscarEstatisticasCampus(unidade: string): Promise<EstatisticasCampus> {
+  const { data, error } = await db
+    .schema(DB_SCHEMA)
+    .from(DB_TABLE_OCORRENCIAS)
+    .select('status,bloco,tipo,reforcos')
+    .eq('unidade', unidade);
+
+  if (error) throw error;
+
+  const items = (data ?? []) as { status: string; bloco: string | null; tipo: string | null; reforcos: number | null }[];
+  const blocoMap: Record<string, { abertos: number; resolvidos: number }> = {};
+  const tipoMap: Record<string, number> = {};
+  const statusMap: Record<string, number> = {};
+  let totalReforcos = 0;
+  let relatosComReforco = 0;
+
+  for (const o of items) {
+    const bloco = o.bloco ?? 'Geral';
+    if (!blocoMap[bloco]) blocoMap[bloco] = { abertos: 0, resolvidos: 0 };
+    if (o.status === 'pendente' || o.status === 'em_verificacao') blocoMap[bloco].abertos++;
+    else if (o.status === 'resolvido') blocoMap[bloco].resolvidos++;
+
+    const tipo = o.tipo ?? 'Reclamação';
+    tipoMap[tipo] = (tipoMap[tipo] ?? 0) + 1;
+    statusMap[o.status] = (statusMap[o.status] ?? 0) + 1;
+
+    const r = o.reforcos ?? 0;
+    totalReforcos += r;
+    if (r > 0) relatosComReforco++;
+  }
+
+  const STATUS_META: Record<string, { label: string; cor: string }> = {
+    pendente: { label: 'Aberto', cor: '#f59e0b' },
+    em_verificacao: { label: 'Em andamento', cor: '#3b82f6' },
+    resolvido: { label: 'Concluído', cor: '#10b981' },
+  };
+
+  return {
+    totalRelatos: items.length,
+    totalAbertos: statusMap.pendente ?? 0,
+    totalEmAndamento: statusMap.em_verificacao ?? 0,
+    totalResolvidos: statusMap.resolvido ?? 0,
+    totalReforcos,
+    relatosComReforco,
+    porBloco: Object.entries(blocoMap)
+      .map(([bloco, v]) => ({ bloco, ...v }))
+      .sort((a, b) => (b.abertos + b.resolvidos) - (a.abertos + a.resolvidos))
+      .slice(0, 12),
+    porTipo: Object.entries(tipoMap).map(([tipo, total]) => ({ tipo, total })),
+    porStatus: Object.entries(statusMap).map(([s, total]) => ({
+      status: s,
+      label: STATUS_META[s]?.label ?? s,
+      cor: STATUS_META[s]?.cor ?? '#94a3b8',
+      total,
+    })),
+  };
+}
+
+export async function buscarResumoTodosCampus(): Promise<{ unidade: string; abertos: number; andamento: number; resolvidos: number; total: number }[]> {
+  const { data, error } = await db
+    .schema(DB_SCHEMA)
+    .from(DB_TABLE_OCORRENCIAS)
+    .select('status,unidade');
+
+  if (error) throw error;
+
+  const items = (data ?? []) as { status: string; unidade: string | null }[];
+  const mapa: Record<string, { abertos: number; andamento: number; resolvidos: number }> = {};
+
+  for (const o of items) {
+    const u = o.unidade ?? 'Desconhecido';
+    if (!mapa[u]) mapa[u] = { abertos: 0, andamento: 0, resolvidos: 0 };
+    if (o.status === 'pendente') mapa[u].abertos++;
+    else if (o.status === 'em_verificacao') mapa[u].andamento++;
+    else if (o.status === 'resolvido') mapa[u].resolvidos++;
+  }
+
+  return Object.entries(mapa).map(([unidade, v]) => ({
+    unidade,
+    ...v,
+    total: v.abertos + v.andamento + v.resolvidos,
+  }));
+}
+
 async function chamarManageOcorrencia(payload: GerenciarPayload | ValidarSenhaPayload, adminKey: string) {
   const baseUrl = import.meta.env.VITE_SUPABASE_FUNCTIONS_BASE_URL;
   if (!baseUrl) {
