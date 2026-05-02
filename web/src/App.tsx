@@ -1186,44 +1186,6 @@ export function App() {
 
               <DashboardGeral />
 
-              {campusGestaoPendente ? (
-                <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3">
-                  <p className="text-sm font-semibold text-zinc-800">
-                    Acesso ao campus {DADOS_UNIDADES[campusGestaoPendente]?.nome ?? campusGestaoPendente}
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <input
-                      type="password"
-                      className="input max-w-xs"
-                      value={senhaGestaoCampus}
-                      onChange={(e) => {
-                        setSenhaGestaoCampus(e.target.value);
-                        if (erroSenhaGestaoCampus) setErroSenhaGestaoCampus(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          validarSenhaCampusGestao();
-                        }
-                      }}
-                      placeholder="Digite a senha do campus"
-                    />
-                    <Button type="button" variant="primary" onClick={validarSenhaCampusGestao}>Entrar</Button>
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        setCampusGestaoPendente(null);
-                        setSenhaGestaoCampus('');
-                        setErroSenhaGestaoCampus(null);
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                  </div>
-                  {erroSenhaGestaoCampus ? <p className="mt-2 text-sm text-red-700">{erroSenhaGestaoCampus}</p> : null}
-                  <p className="mt-2 text-xs text-zinc-600">Senha padrão: dirplad{campusGestaoPendente.toLowerCase()} ou dirge{campusGestaoPendente.toLowerCase()}.</p>
-                </div>
-              ) : null}
             </section>
           ) : null}
 
@@ -1265,7 +1227,17 @@ export function App() {
                               {r.status === 'em_verificacao' ? 'Em andamento' : 'Aberto'}
                             </span>
                           </div>
-                          <Button type="button" className="shrink-0 px-3 py-1.5 text-xs" onClick={() => abrirGestaoRelato(r)}>Atender</Button>
+                          <div className="flex shrink-0 flex-col gap-1.5">
+                            <Button type="button" className="px-3 py-1.5 text-xs" onClick={() => abrirGestaoRelato(r)}>Atender</Button>
+                            <a
+                              href={`/relato/${r.id_curto}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center justify-center gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-zinc-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                            >
+                              Acessar relato
+                            </a>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1672,7 +1644,7 @@ export function App() {
               <p><strong>Local:</strong> {detalheResolvido.bloco} - {detalheResolvido.ambiente}</p>
               <p><strong>Descrição:</strong> {detalheResolvido.descricao_detalhada || '-'}</p>
               <p><strong>Concluído em:</strong> {detalheResolvido.resolvido_em ? new Date(detalheResolvido.resolvido_em).toLocaleString('pt-BR') : '-'}</p>
-              <p><strong>Anotação admin:</strong> {detalheResolvido.complemento_admin || '-'}</p>
+              <p><strong>Complemento Gestão:</strong> {detalheResolvido.complemento_admin || '-'}</p>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
@@ -1738,6 +1710,55 @@ export function App() {
             onFechar={fecharGestaoRelato}
             onSalvo={fecharGestaoRelato}
           />
+        ) : null}
+
+        {campusGestaoPendente ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+            <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl">
+              <div className="border-b border-zinc-100 bg-zinc-50 px-5 py-4">
+                <p className="text-xs font-medium text-zinc-400">Acesso restrito</p>
+                <h3 className="mt-0.5 text-base font-semibold text-zinc-900">
+                  Campus {DADOS_UNIDADES[campusGestaoPendente]?.nome ?? campusGestaoPendente}
+                </h3>
+              </div>
+              <div className="space-y-3 p-5">
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                    Senha de acesso
+                  </label>
+                  <input
+                    type="password"
+                    className="input"
+                    autoFocus
+                    value={senhaGestaoCampus}
+                    onChange={(e) => {
+                      setSenhaGestaoCampus(e.target.value);
+                      if (erroSenhaGestaoCampus) setErroSenhaGestaoCampus(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); validarSenhaCampusGestao(); }
+                      if (e.key === 'Escape') { setCampusGestaoPendente(null); setSenhaGestaoCampus(''); setErroSenhaGestaoCampus(null); }
+                    }}
+                    placeholder="••••••••"
+                  />
+                </div>
+                {erroSenhaGestaoCampus ? (
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{erroSenhaGestaoCampus}</p>
+                ) : null}
+                <p className="text-xs text-zinc-400">
+                  Padrão: dirplad{campusGestaoPendente.toLowerCase()} ou dirge{campusGestaoPendente.toLowerCase()}
+                </p>
+              </div>
+              <div className="flex justify-end gap-2 border-t border-zinc-100 px-5 py-4">
+                <Button type="button" onClick={() => { setCampusGestaoPendente(null); setSenhaGestaoCampus(''); setErroSenhaGestaoCampus(null); }}>
+                  Cancelar
+                </Button>
+                <Button type="button" variant="primary" onClick={validarSenhaCampusGestao}>
+                  Entrar
+                </Button>
+              </div>
+            </div>
+          </div>
         ) : null}
       </main>
 

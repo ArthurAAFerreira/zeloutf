@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckCircle2, Clock, X } from 'lucide-react';
+import { CheckCircle2, Clock, ExternalLink, X } from 'lucide-react';
 import type { OcorrenciaResumo } from '../../services/ocorrencias';
 import { gerenciarOcorrencia } from '../../services/ocorrencias';
 import { Button } from '../ui/Button';
@@ -129,7 +129,7 @@ export function GestaoModal({ relato, onFechar, onSalvo }: GestaoModalProps) {
 
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Complemento administrativo
+              Complemento Gestão
             </label>
             <textarea
               className="input min-h-[80px]"
@@ -157,13 +157,21 @@ export function GestaoModal({ relato, onFechar, onSalvo }: GestaoModalProps) {
           ) : null}
         </div>
 
-        <div className="flex justify-end gap-2 border-t border-zinc-100 px-5 py-4">
-          <Button type="button" onClick={onFechar}>
-            Cancelar
-          </Button>
-          <Button type="button" variant="primary" disabled={salvando} onClick={salvar}>
-            {salvando ? 'Salvando...' : 'Salvar atendimento'}
-          </Button>
+        <div className="flex items-center justify-between gap-2 border-t border-zinc-100 px-5 py-4">
+          <a
+            href={`/relato/${relato.id_curto}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> Acessar página do relato
+          </a>
+          <div className="flex gap-2">
+            <Button type="button" onClick={onFechar}>Cancelar</Button>
+            <Button type="button" variant="primary" disabled={salvando} onClick={salvar}>
+              {salvando ? 'Salvando...' : 'Salvar atendimento'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
