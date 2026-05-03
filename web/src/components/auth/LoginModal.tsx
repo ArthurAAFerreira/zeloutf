@@ -18,7 +18,7 @@ export function LoginModal({ onSucesso, onFechar }: LoginModalProps) {
     const raw = email.trim();
     const s = senha.trim();
     if (!raw || !s) { setErro('Preencha usuário e senha.'); return; }
-    const e = raw.includes('@') ? raw : raw + '@gestao.local';
+    const e = raw.includes('@') ? raw : raw + '@zelo.utfpr';
     setCarregando(true);
     setErro(null);
     try {
