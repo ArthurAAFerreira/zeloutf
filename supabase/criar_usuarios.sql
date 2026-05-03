@@ -51,7 +51,7 @@ BEGIN
           id, user_id, identity_data, provider,
           last_sign_in_at, created_at, updated_at, provider_id
         ) VALUES (
-          gen_random_uuid()::text,
+          gen_random_uuid(),
           novo_id,
           json_build_object(
             'sub',   novo_id::text,

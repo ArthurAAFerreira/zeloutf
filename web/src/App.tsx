@@ -659,10 +659,13 @@ export function App() {
   }
 
   async function sairDaGestao() {
-    await fazerLogout();
-    setSessaoGestao(null);
-    setGestaoAcesso(null);
-    voltarParaInicioRelatos();
+    try {
+      await fazerLogout();
+    } finally {
+      setSessaoGestao(null);
+      setGestaoAcesso(null);
+      voltarParaInicioRelatos();
+    }
   }
 
   function abrirDashboard() {
