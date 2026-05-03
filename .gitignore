@@ -3,3 +3,4 @@ web/dist/
 supabase/.temp/
 .env
 .env.local
+supabase/criar_usuarios.mjs
