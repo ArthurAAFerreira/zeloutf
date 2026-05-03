@@ -15,9 +15,10 @@ export function LoginModal({ onSucesso, onFechar }: LoginModalProps) {
   const [erro, setErro] = useState<string | null>(null);
 
   async function entrar() {
-    const e = email.trim();
+    const raw = email.trim();
     const s = senha.trim();
-    if (!e || !s) { setErro('Preencha e-mail e senha.'); return; }
+    if (!raw || !s) { setErro('Preencha usuário e senha.'); return; }
+    const e = raw.includes('@') ? raw : raw + '@gestao.local';
     setCarregando(true);
     setErro(null);
     try {
@@ -63,16 +64,18 @@ export function LoginModal({ onSucesso, onFechar }: LoginModalProps) {
         <div className="space-y-4 p-5">
           <div>
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              E-mail
+              Usuário
             </label>
             <input
-              type="email"
+              type="text"
               className="input"
               autoFocus
+              autoCapitalize="none"
+              autoCorrect="off"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setErro(null); }}
               onKeyDown={(e) => { if (e.key === 'Enter') void entrar(); }}
-              placeholder="seu@email.utfpr.edu.br"
+              placeholder="dirpladct"
             />
           </div>
 

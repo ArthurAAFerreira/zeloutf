@@ -27,6 +27,11 @@ export async function fazerLogout(): Promise<void> {
   await db.auth.signOut();
 }
 
+export async function alterarSenha(novaSenha: string): Promise<void> {
+  const { error } = await db.auth.updateUser({ password: novaSenha });
+  if (error) throw new Error(error.message);
+}
+
 export async function buscarAcessoGestao(): Promise<GestaoAcesso | null> {
   const { data, error } = await db
     .from('gestao_acesso')

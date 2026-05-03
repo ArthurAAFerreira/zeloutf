@@ -40,6 +40,7 @@ import { buscarAcessoGestao, fazerLogout, type GestaoAcesso, type Session } from
 import { AppFooter } from './components/layout/AppFooter';
 import { GestaoModal } from './components/gestao/GestaoModal';
 import { LoginModal } from './components/auth/LoginModal';
+import { AlterarSenhaModal } from './components/auth/AlterarSenhaModal';
 import { DashboardGeral } from './components/dashboard/DashboardGeral';
 import { DashboardPage } from './components/dashboard/DashboardPage';
 import { Button } from './components/ui/Button';
@@ -114,6 +115,7 @@ export function App() {
   const [sessaoGestao, setSessaoGestao] = useState<Session | null>(null);
   const [gestaoAcesso, setGestaoAcesso] = useState<GestaoAcesso | null>(null);
   const [mostrarLoginGestao, setMostrarLoginGestao] = useState(false);
+  const [mostrarAlterarSenha, setMostrarAlterarSenha] = useState(false);
   const [rastroClique, setRastroClique] = useState<{
     text: string;
     startX: number;
@@ -1228,13 +1230,22 @@ export function App() {
                 </div>
                 <div className="flex items-center gap-2">
                   {sessaoGestao ? (
-                    <button
-                      type="button"
-                      className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-                      onClick={() => void sairDaGestao()}
-                    >
-                      <LogOut className="h-3.5 w-3.5" /> Sair
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50"
+                        onClick={() => setMostrarAlterarSenha(true)}
+                      >
+                        Alterar senha
+                      </button>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => void sairDaGestao()}
+                      >
+                        <LogOut className="h-3.5 w-3.5" /> Sair
+                      </button>
+                    </>
                   ) : (
                     <button
                       type="button"
@@ -1813,6 +1824,10 @@ export function App() {
             onSucesso={aoLogarComSucesso}
             onFechar={() => setMostrarLoginGestao(false)}
           />
+        ) : null}
+
+        {mostrarAlterarSenha ? (
+          <AlterarSenhaModal onFechar={() => setMostrarAlterarSenha(false)} />
         ) : null}
 
         {campusGestaoPendente ? (
