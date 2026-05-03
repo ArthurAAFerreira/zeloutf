@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS public.gestao_acesso (
 ALTER TABLE public.gestao_acesso ENABLE ROW LEVEL SECURITY;
 
 -- 3. Política: cada usuário lê apenas seu próprio registro
+DROP POLICY IF EXISTS "gestao_acesso_self_select" ON public.gestao_acesso;
 CREATE POLICY "gestao_acesso_self_select"
   ON public.gestao_acesso
   FOR SELECT
