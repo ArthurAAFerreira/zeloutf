@@ -9,10 +9,15 @@ export interface GestaoAcesso {
 }
 
 export async function fazerLogin(email: string, senha: string): Promise<Session> {
-  const { data, error } = await db.auth.signInWithPassword({ email, password: senha });
-  if (error) throw new Error(error.message);
-  if (!data.session) throw new Error('Sessão não retornada. Tente novamente.');
-  return data.session;
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('Servidor demorou demais. Verifique sua conexão e tente novamente.')), 15000)
+  );
+  const login = db.auth.signInWithPassword({ email, password: senha }).then(({ data, error }) => {
+    if (error) throw new Error(error.message);
+    if (!data.session) throw new Error('Sessão não retornada. Tente novamente.');
+    return data.session;
+  });
+  return Promise.race([login, timeout]);
 }
 
 export async function fazerLoginGoogle(): Promise<void> {
