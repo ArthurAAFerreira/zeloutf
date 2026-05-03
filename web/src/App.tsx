@@ -658,14 +658,11 @@ export function App() {
     window.history.pushState(null, '', '/gestao');
   }
 
-  async function sairDaGestao() {
-    try {
-      await fazerLogout();
-    } finally {
-      setSessaoGestao(null);
-      setGestaoAcesso(null);
-      voltarParaInicioRelatos();
-    }
+  function sairDaGestao() {
+    setSessaoGestao(null);
+    setGestaoAcesso(null);
+    voltarParaInicioRelatos();
+    void fazerLogout();
   }
 
   function abrirDashboard() {
@@ -1244,7 +1241,7 @@ export function App() {
                       <button
                         type="button"
                         className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-                        onClick={() => void sairDaGestao()}
+                        onClick={sairDaGestao}
                       >
                         <LogOut className="h-3.5 w-3.5" /> Sair
                       </button>
@@ -1302,7 +1299,7 @@ export function App() {
                       <button
                         type="button"
                         className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-                        onClick={() => void sairDaGestao()}
+                        onClick={sairDaGestao}
                       >
                         <LogOut className="h-3.5 w-3.5" /> Sair
                       </button>
