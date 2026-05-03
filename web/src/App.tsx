@@ -1185,8 +1185,20 @@ export function App() {
   return (
     <div className="flex min-h-screen flex-col">
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col p-4 md:p-8">
-      <header className="mb-6 text-center">
+      <header className="mb-6 flex items-center">
+        <div className="flex-1" />
         <button type="button" className="badge-brand" onClick={voltarParaInicioRelatos}>Sistema <span className="text-brand-yellow">ZeloUTF</span> · UTFPR</button>
+        <div className="flex flex-1 justify-end">
+          {modo === 'relatos' ? (
+            <button
+              type="button"
+              onClick={entrarModoGestao}
+              className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${sessaoGestao ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100' : 'border-zinc-200 bg-white text-zinc-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700'}`}
+            >
+              <ShieldCheck className="h-3.5 w-3.5" /> Gestão
+            </button>
+          ) : null}
+        </div>
       </header>
 
       <main className="flex-1">
