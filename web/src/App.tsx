@@ -10,6 +10,7 @@ import {
   Footprints,
   Globe,
   ImagePlus,
+  LogOut,
   MapPin,
   Search,
   Send,
@@ -34,8 +35,11 @@ import {
   validarSenhaAdmin,
   type OcorrenciaResumo,
 } from './services/ocorrencias';
+import { db } from './lib/supabase';
+import { buscarAcessoGestao, fazerLogout, type GestaoAcesso, type Session } from './lib/auth';
 import { AppFooter } from './components/layout/AppFooter';
 import { GestaoModal } from './components/gestao/GestaoModal';
+import { LoginModal } from './components/auth/LoginModal';
 import { DashboardGeral } from './components/dashboard/DashboardGeral';
 import { DashboardPage } from './components/dashboard/DashboardPage';
 import { Button } from './components/ui/Button';
@@ -107,6 +111,9 @@ export function App() {
   const [erroSenhaGestaoCampus, setErroSenhaGestaoCampus] = useState<string | null>(null);
   const [naturezaEscolhida, setNaturezaEscolhida] = useState(false);
   const [gestaoRelatoAtivo, setGestaoRelatoAtivo] = useState<OcorrenciaResumo | null>(null);
+  const [sessaoGestao, setSessaoGestao] = useState<Session | null>(null);
+  const [gestaoAcesso, setGestaoAcesso] = useState<GestaoAcesso | null>(null);
+  const [mostrarLoginGestao, setMostrarLoginGestao] = useState(false);
   const [rastroClique, setRastroClique] = useState<{
     text: string;
     startX: number;
@@ -172,8 +179,36 @@ export function App() {
     return ids.length === 1 ? ids[0] : null;
   }, [unidade]);
 
+  const campusVisiveis = useMemo(() => {
+    const todos = Object.entries(DADOS_UNIDADES);
+    if (!sessaoGestao) return todos;
+    if (!gestaoAcesso) return [];
+    if (gestaoAcesso.papel === 'admin_geral') return todos;
+    return todos.filter(([id]) => gestaoAcesso.campus_ids.includes(id));
+  }, [sessaoGestao, gestaoAcesso]);
+
+  useEffect(() => {
+    const { data: { subscription } } = db.auth.onAuthStateChange(async (_event, session) => {
+      setSessaoGestao(session);
+      if (session) {
+        const acesso = await buscarAcessoGestao();
+        setGestaoAcesso(acesso);
+      } else {
+        setGestaoAcesso(null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   useEffect(() => {
     async function carregarEstadoInicial() {
+      const { data: { session } } = await db.auth.getSession();
+      if (session) {
+        setSessaoGestao(session);
+        const acesso = await buscarAcessoGestao();
+        setGestaoAcesso(acesso);
+      }
+
       const campusDash = parsearRotaDashboard(window.location.pathname);
       if (campusDash) {
         setModo('gestao');
@@ -185,6 +220,7 @@ export function App() {
       if (window.location.pathname === '/gestao') {
         setModo('gestao');
         setGestaoTela('campus');
+        if (!session) setMostrarLoginGestao(true);
         return;
       }
 
@@ -561,6 +597,10 @@ export function App() {
   }
 
   function solicitarAcessoCampusGestao(campusSelecionado: string) {
+    if (sessaoGestao) {
+      abrirPainelGestao(campusSelecionado);
+      return;
+    }
     setCampusGestaoPendente(campusSelecionado);
     setSenhaGestaoCampus('');
     setErroSenhaGestaoCampus(null);
@@ -600,9 +640,27 @@ export function App() {
   }
 
   function entrarModoGestao() {
+    if (!sessaoGestao) {
+      setMostrarLoginGestao(true);
+      return;
+    }
     setModo('gestao');
     setGestaoTela('campus');
     window.history.pushState(null, '', '/gestao');
+  }
+
+  function aoLogarComSucesso() {
+    setMostrarLoginGestao(false);
+    setModo('gestao');
+    setGestaoTela('campus');
+    window.history.pushState(null, '', '/gestao');
+  }
+
+  async function sairDaGestao() {
+    await fazerLogout();
+    setSessaoGestao(null);
+    setGestaoAcesso(null);
+    voltarParaInicioRelatos();
   }
 
   function abrirDashboard() {
@@ -1162,8 +1220,32 @@ export function App() {
           {gestaoTela === 'campus' ? (
             <section className="card card-gestao mb-4">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-3xl font-semibold text-indigo-950">Campus da Gestão</h2>
-                <Button type="button" onClick={voltarParaInicioRelatos}>Modo relato</Button>
+                <div>
+                  <h2 className="text-3xl font-semibold text-indigo-950">Campus da Gestão</h2>
+                  {sessaoGestao ? (
+                    <p className="mt-0.5 text-xs text-zinc-500">{sessaoGestao.user.email}</p>
+                  ) : null}
+                </div>
+                <div className="flex items-center gap-2">
+                  {sessaoGestao ? (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                      onClick={() => void sairDaGestao()}
+                    >
+                      <LogOut className="h-3.5 w-3.5" /> Sair
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100"
+                      onClick={() => setMostrarLoginGestao(true)}
+                    >
+                      Entrar
+                    </button>
+                  )}
+                  <Button type="button" onClick={voltarParaInicioRelatos}>Modo relato</Button>
+                </div>
               </div>
 
               <button className="quick-action-gestao mb-4" type="button">
@@ -1171,7 +1253,12 @@ export function App() {
               </button>
 
               <div className="grid gap-3 md:grid-cols-4">
-                {Object.entries(DADOS_UNIDADES).map(([id, item]) => (
+                {campusVisiveis.length === 0 && sessaoGestao ? (
+                  <p className="col-span-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-center text-sm text-amber-800">
+                    Nenhum campus atribuído à sua conta. Contacte o administrador do sistema.
+                  </p>
+                ) : null}
+                {campusVisiveis.map(([id, item]) => (
                   <button
                     key={id}
                     type="button"
@@ -1197,6 +1284,15 @@ export function App() {
                   <div className="flex gap-2">
                     <Button type="button" onClick={voltarSelecaoCampusGestao}>Trocar campus</Button>
                     <Button type="button" onClick={voltarParaInicioRelatos}>Modo relato</Button>
+                    {sessaoGestao ? (
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => void sairDaGestao()}
+                      >
+                        <LogOut className="h-3.5 w-3.5" /> Sair
+                      </button>
+                    ) : null}
                   </div>
                 </div>
 
@@ -1709,6 +1805,13 @@ export function App() {
             relato={gestaoRelatoAtivo}
             onFechar={fecharGestaoRelato}
             onSalvo={fecharGestaoRelato}
+          />
+        ) : null}
+
+        {mostrarLoginGestao ? (
+          <LoginModal
+            onSucesso={aoLogarComSucesso}
+            onFechar={() => setMostrarLoginGestao(false)}
           />
         ) : null}
 
