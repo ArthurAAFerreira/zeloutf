@@ -10,7 +10,7 @@ export interface GestaoAcesso {
 
 export async function fazerLogin(email: string, senha: string): Promise<Session> {
   const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('Servidor demorou demais. Verifique sua conexão e tente novamente.')), 15000)
+    setTimeout(() => reject(new Error('Servidor demorou demais. Verifique sua conexão e tente novamente.')), 30000)
   );
   const login = db.auth.signInWithPassword({ email, password: senha }).then(({ data, error }) => {
     if (error) throw new Error(error.message);
@@ -29,7 +29,7 @@ export async function fazerLoginGoogle(): Promise<void> {
 }
 
 export async function fazerLogout(): Promise<void> {
-  await db.auth.signOut();
+  await db.auth.signOut({ scope: 'local' });
 }
 
 export async function alterarSenha(novaSenha: string): Promise<void> {

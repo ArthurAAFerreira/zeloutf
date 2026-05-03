@@ -1524,11 +1524,6 @@ export function App() {
                   </div>
                 ) : null}
               </div>
-              {etapaNavegacao === 'campus' ? (
-                <Button type="button" className="btn-gradient w-full" onClick={entrarModoGestao}>
-                  Entrar no Modo Gestão
-                </Button>
-              ) : null}
             </div>
             </section>
           ) : null}
