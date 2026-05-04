@@ -25,6 +25,8 @@ export interface OcorrenciaResumo {
   gerenciado_por: string | null;
   complemento_admin: string | null;
   resolvido_em: string | null;
+  lat_relator?: number | null;
+  lon_relator?: number | null;
 }
 
 export async function uploadFotoOcorrencia(file: File, deviceId: string): Promise<string> {
@@ -122,7 +124,7 @@ export async function buscarPorIdCurto(idCurto: number): Promise<OcorrenciaResum
   const { data, error } = await db
     .schema(DB_SCHEMA)
     .from(DB_TABLE_OCORRENCIAS)
-    .select('id,id_curto,created_at,tipo,unidade,sede,status,problema,bloco,local,ambiente,descricao_detalhada,identificacao_usuario,foto_url,foto_conclusao_url,reforcos,comunidade_sugere_conclusao,comunidade_email,comunidade_descricao,comunidade_foto_url,gerenciado_por,complemento_admin,resolvido_em')
+    .select('id,id_curto,created_at,tipo,unidade,sede,status,problema,bloco,local,ambiente,descricao_detalhada,identificacao_usuario,foto_url,foto_conclusao_url,reforcos,comunidade_sugere_conclusao,comunidade_email,comunidade_descricao,comunidade_foto_url,gerenciado_por,complemento_admin,resolvido_em,lat_relator,lon_relator')
     .eq('id_curto', idCurto)
     .maybeSingle();
 
@@ -218,7 +220,7 @@ export async function listarRelatosGestaoPorUnidade(unidade: string): Promise<{ 
     db
       .schema(DB_SCHEMA)
       .from(DB_TABLE_OCORRENCIAS)
-      .select('id,id_curto,created_at,tipo,unidade,sede,status,problema,bloco,local,ambiente,descricao_detalhada,identificacao_usuario,foto_url,foto_conclusao_url,reforcos,comunidade_sugere_conclusao,comunidade_email,comunidade_descricao,comunidade_foto_url,gerenciado_por,complemento_admin,resolvido_em')
+      .select('id,id_curto,created_at,tipo,unidade,sede,status,problema,bloco,local,ambiente,descricao_detalhada,identificacao_usuario,foto_url,foto_conclusao_url,reforcos,comunidade_sugere_conclusao,comunidade_email,comunidade_descricao,comunidade_foto_url,gerenciado_por,complemento_admin,resolvido_em,lat_relator,lon_relator')
       .in('status', ['pendente', 'em_verificacao'])
       .eq('unidade', unidade)
       .order('created_at', { ascending: false })
@@ -226,7 +228,7 @@ export async function listarRelatosGestaoPorUnidade(unidade: string): Promise<{ 
     db
       .schema(DB_SCHEMA)
       .from(DB_TABLE_OCORRENCIAS)
-      .select('id,id_curto,created_at,tipo,unidade,sede,status,problema,bloco,local,ambiente,descricao_detalhada,identificacao_usuario,foto_url,foto_conclusao_url,reforcos,comunidade_sugere_conclusao,comunidade_email,comunidade_descricao,comunidade_foto_url,gerenciado_por,complemento_admin,resolvido_em')
+      .select('id,id_curto,created_at,tipo,unidade,sede,status,problema,bloco,local,ambiente,descricao_detalhada,identificacao_usuario,foto_url,foto_conclusao_url,reforcos,comunidade_sugere_conclusao,comunidade_email,comunidade_descricao,comunidade_foto_url,gerenciado_por,complemento_admin,resolvido_em,lat_relator,lon_relator')
       .eq('status', 'resolvido')
       .eq('unidade', unidade)
       .gte('resolvido_em', dataLimite.toISOString())
@@ -325,10 +327,17 @@ export async function gerenciarOcorrenciaAutenticado(payload: GerenciarPayload) 
     complemento_admin: payload.complemento_admin ?? null,
     gerenciado_por: payload.gerenciado_por ?? 'gestao-auth',
   };
+  if (payload.tipo !== undefined) updates.tipo = payload.tipo;
+  if (payload.bloco !== undefined) updates.bloco = payload.bloco;
+  if (payload.local !== undefined) updates.local = payload.local;
+  if (payload.ambiente !== undefined) updates.ambiente = payload.ambiente;
+  if (payload.problema !== undefined) updates.problema = payload.problema;
   if (payload.status === 'resolvido') {
     updates.resolvido_em = new Date().toISOString();
+    updates.resolvido_por = payload.gerenciado_por ?? 'gestao-auth';
   } else {
     updates.resolvido_em = null;
+    updates.resolvido_por = null;
   }
   const { error } = await db
     .schema(DB_SCHEMA)

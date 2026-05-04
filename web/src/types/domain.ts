@@ -45,4 +45,6 @@ export interface OcorrenciaInsert {
   identificacao_usuario: string | null;
   foto_url: string | null;
   descricao: string;
+  lat_relator?: number | null;
+  lon_relator?: number | null;
 }

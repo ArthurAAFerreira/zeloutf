@@ -18,7 +18,6 @@ import {
   ShieldCheck,
   Toilet,
   Trees,
-  X,
 } from 'lucide-react';
 import { DADOS_UNIDADES, PROBLEMAS_POR_AMBIENTE } from './data/catalog';
 import type { CategoriaGrupo, OcorrenciaInsert, Unidade } from './types/domain';
@@ -28,6 +27,7 @@ import { gerarRotaCompacta, parsearRotaCompacta, parsearRotaCompat } from './lib
 import {
   buscarPorIdCurto,
   gerenciarOcorrencia,
+  gerenciarOcorrenciaAutenticado,
   informarConclusaoComunidade,
   inserirOcorrencia,
   listarFeedOcorrencias,
@@ -220,14 +220,14 @@ export function App() {
   }, [sessaoGestao, gestaoAcesso]);
 
   useEffect(() => {
-    const { data: { subscription } } = db.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = db.auth.onAuthStateChange(async (event, session) => {
       setSessaoGestao(session);
-      if (session) {
+      if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
         setGestaoAcessoCarregando(true);
         const acesso = await buscarAcessoGestao();
         setGestaoAcesso(acesso);
         setGestaoAcessoCarregando(false);
-      } else {
+      } else if (!session) {
         setGestaoAcesso(null);
         setGestaoAcessoCarregando(false);
       }
@@ -247,7 +247,9 @@ export function App() {
           null,
         );
         if (maisProximo && maisProximo.dist < 80) {
-          setCampusSugerido({ id: maisProximo.id, nome: DADOS_UNIDADES[maisProximo.id]?.nome ?? maisProximo.id });
+          const nome = DADOS_UNIDADES[maisProximo.id]?.nome ?? maisProximo.id;
+          setCampusSugerido({ id: maisProximo.id, nome });
+          resetFluxoApartirCampus(maisProximo.id);
         }
       });
     }
@@ -505,6 +507,18 @@ export function App() {
     setEnviando(true);
 
     try {
+      let latRelator: number | null = null;
+      let lonRelator: number | null = null;
+      if ('geolocation' in navigator) {
+        try {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 3000, maximumAge: 60000 })
+          );
+          latRelator = pos.coords.latitude;
+          lonRelator = pos.coords.longitude;
+        } catch { /* localização não disponível */ }
+      }
+
       let fotoUrl: string | null = null;
       if (fotoRelatoArquivo) {
         const arquivoOtimizado = await reduzirImagemParaUpload(fotoRelatoArquivo);
@@ -526,6 +540,8 @@ export function App() {
         identificacao_usuario: values.identificacao?.trim() || null,
         foto_url: fotoUrl,
         descricao: `${values.problema} - ${bloco}`,
+        lat_relator: latRelator,
+        lon_relator: lonRelator,
       };
 
       await inserirOcorrencia(payload);
@@ -739,9 +755,6 @@ export function App() {
     window.history.pushState(null, '', '/gestao');
   }
 
-  function abrirGestaoRelato(r: OcorrenciaResumo) {
-    setGestaoRelatoAtivo(r);
-  }
 
   function fecharGestaoRelato() {
     setGestaoRelatoAtivo(null);
@@ -895,7 +908,7 @@ export function App() {
   function abrirPaginaRelato(relato: OcorrenciaResumo) {
     setPaginaRelato(relato);
     setAdminKey('');
-    setAdminSenhaValidada(false);
+    setAdminSenhaValidada(!!sessaoGestao);
     setAlterandoBlocoRelato(false);
     setStatusAdmin(relato.status);
     setComplementoAdmin(relato.complemento_admin ?? '');
@@ -924,35 +937,36 @@ export function App() {
 
   async function onSalvarPaginaRelato() {
     if (!paginaRelato) return;
-    const senha = adminKey.trim();
-    if (!senha) {
-      setErroFeed('Informe a senha admin.');
-      return;
-    }
-    if (!adminSenhaValidada) {
-      setErroFeed('Valide a senha admin para salvar alterações.');
-      return;
+
+    if (!sessaoGestao) {
+      const senha = adminKey.trim();
+      if (!senha) { setErroFeed('Informe a senha admin.'); return; }
+      if (!adminSenhaValidada) { setErroFeed('Valide a senha admin para salvar alterações.'); return; }
     }
 
     setErroFeed(null);
     setMensagemGerenciamentoRelato(null);
     setSalvandoGerenciamentoRelato(true);
 
+    const gerenciadorId = sessaoGestao?.user.email?.replace('@zelo.utfpr', '') ?? 'admin-web';
+    const payload = {
+      id: paginaRelato.id,
+      status: statusAdmin,
+      complemento_admin: complementoAdmin,
+      gerenciado_por: gerenciadorId,
+      tipo: adminTipoRelato,
+      bloco: adminBlocoRelato,
+      local: adminLocalRelato,
+      ambiente: adminAmbienteRelato,
+      problema: adminProblemaRelato,
+    };
+
     try {
-      await gerenciarOcorrencia(
-        {
-          id: paginaRelato.id,
-          status: statusAdmin,
-          complemento_admin: complementoAdmin,
-          gerenciado_por: 'admin-web',
-          tipo: adminTipoRelato,
-          bloco: adminBlocoRelato,
-          local: adminLocalRelato,
-          ambiente: adminAmbienteRelato,
-          problema: adminProblemaRelato,
-        },
-        senha,
-      );
+      if (sessaoGestao) {
+        await gerenciarOcorrenciaAutenticado(payload);
+      } else {
+        await gerenciarOcorrencia(payload, adminKey.trim());
+      }
 
       const atualizado: OcorrenciaResumo = {
         ...paginaRelato,
@@ -1066,40 +1080,58 @@ export function App() {
             <Button type="button" onClick={fecharPaginaRelato}>Fechar</Button>
           </div>
 
-          <div className="mt-4 grid gap-2 lg:grid-cols-[1.2fr_1fr] lg:items-end">
-            <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-2.5">
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-700" htmlFor="adminKeyPagina">Senha admin</label>
-              <div className="flex gap-2">
-                <input
-                  id="adminKeyPagina"
-                  type="password"
-                  className="input h-10"
-                  value={adminKey}
-                  onChange={(e) => {
-                    setAdminKey(e.target.value);
-                    setAdminSenhaValidada(false);
-                    setErroFeed(null);
-                    setMensagemGerenciamentoRelato(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      void onValidarSenhaPaginaRelato();
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  onClick={onValidarSenhaPaginaRelato}
-                  disabled={validandoSenhaAdmin}
-                  className="h-10 w-10 px-0"
-                  title="Validar senha"
-                  aria-label="Validar senha"
-                >
-                  {validandoSenhaAdmin ? '...' : <CheckCircle2 className="h-4 w-4" />}
-                </Button>
-              </div>
+          {sessaoGestao && (paginaRelato.lat_relator || paginaRelato.lon_relator) ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              {(() => {
+                const entry = Object.entries(DADOS_UNIDADES).find(([, u]) => u.nome === paginaRelato.unidade);
+                const coords = entry ? CAMPUS_COORDS[entry[0]] : null;
+                if (!coords || !paginaRelato.lat_relator || !paginaRelato.lon_relator) return null;
+                const dist = distanciaKm(paginaRelato.lat_relator, paginaRelato.lon_relator, coords[0], coords[1]);
+                return dist < 0.5
+                  ? <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-700">&#10003; No campus ({Math.round(dist * 1000)}m)</span>
+                  : <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-700">&#9888; {dist.toFixed(1)} km do campus</span>;
+              })()}
             </div>
+          ) : sessaoGestao ? (
+            <p className="mt-3 text-xs text-zinc-400">&#128205; Localização não capturada neste relato</p>
+          ) : null}
+
+          <div className={`mt-4 grid gap-2 lg:items-end ${sessaoGestao ? '' : 'lg:grid-cols-[1.2fr_1fr]'}`}>
+            {!sessaoGestao ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-2.5">
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-zinc-700" htmlFor="adminKeyPagina">Senha admin</label>
+                <div className="flex gap-2">
+                  <input
+                    id="adminKeyPagina"
+                    type="password"
+                    className="input h-10"
+                    value={adminKey}
+                    onChange={(e) => {
+                      setAdminKey(e.target.value);
+                      setAdminSenhaValidada(false);
+                      setErroFeed(null);
+                      setMensagemGerenciamentoRelato(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void onValidarSenhaPaginaRelato();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    onClick={onValidarSenhaPaginaRelato}
+                    disabled={validandoSenhaAdmin}
+                    className="h-10 w-10 px-0"
+                    title="Validar senha"
+                    aria-label="Validar senha"
+                  >
+                    {validandoSenhaAdmin ? '...' : <CheckCircle2 className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
             <div className="rounded-xl border border-zinc-200 bg-zinc-50/70 p-2.5">
               <div className="mb-1 flex items-center justify-between gap-2">
                 <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-700" htmlFor="adminStatusPagina">Status</label>
@@ -1225,7 +1257,7 @@ export function App() {
             </div>
           )}
 
-          {!adminSenhaValidada ? <p className="mt-3 text-sm text-zinc-600">Valide a senha para liberar os campos de edição e o botão de salvar.</p> : null}
+          {!sessaoGestao && !adminSenhaValidada ? <p className="mt-3 text-sm text-zinc-600">Valide a senha para liberar os campos de edição e o botão de salvar.</p> : null}
 
           {mensagemGerenciamentoRelato ? <p className="mt-3 text-sm text-emerald-700">{mensagemGerenciamentoRelato}</p> : null}
           {erroFeed ? <p className="mt-2 text-sm text-red-700">{erroFeed}</p> : null}
@@ -1401,49 +1433,45 @@ export function App() {
                   </button>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
+                <div>
                     <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-indigo-900">Abertos / Em verificação</h3>
-                    <div className="space-y-1.5">
-                      {gestaoAbertos.length === 0 ? <p className="text-sm text-zinc-500">Nenhum relato pendente.</p> : null}
+                    {gestaoAbertos.length === 0 ? <p className="text-sm text-zinc-500">Nenhum relato pendente.</p> : null}
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       {gestaoAbertos.map((r) => (
-                        <div key={r.id} className="gestao-relato-row">
-                          <div className="min-w-0 flex-1">
-                            <p className="gestao-relato-meta">#{r.id_curto} · {r.bloco} · {r.local}</p>
-                            <p className="gestao-relato-title">{r.problema}</p>
-                            <span className={`status-badge ${r.status === 'em_verificacao' ? 'status-badge-progress' : 'status-badge-open'}`}>
-                              {r.status === 'em_verificacao' ? 'Em andamento' : 'Aberto'}
-                            </span>
-                          </div>
-                          <div className="flex shrink-0 flex-col gap-1.5">
-                            <Button type="button" className="px-3 py-1.5 text-xs" onClick={() => abrirGestaoRelato(r)}>Atender</Button>
-                            <a
-                              href={`/relato/${r.id_curto}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="flex items-center justify-center gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[11px] font-semibold text-zinc-600 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
-                            >
-                              Acessar relato
-                            </a>
-                          </div>
-                        </div>
+                        <button
+                          key={r.id}
+                          type="button"
+                          className="rounded-xl border border-zinc-200 bg-white p-3 text-left transition hover:border-indigo-300 hover:shadow-md"
+                          onClick={() => abrirPaginaRelato(r)}
+                        >
+                          <p className="text-[11px] text-zinc-500">#{r.id_curto} · {r.bloco} · {r.local}</p>
+                          <p className="mt-1 line-clamp-2 text-sm font-semibold leading-snug">{r.problema}</p>
+                          <span className={`mt-2 inline-block status-badge ${r.status === 'em_verificacao' ? 'status-badge-progress' : 'status-badge-open'}`}>
+                            {r.status === 'em_verificacao' ? 'Em andamento' : 'Aberto'}
+                          </span>
+                        </button>
                       ))}
                     </div>
                   </div>
-                  <div>
+
+                  <div className="mt-4">
                     <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-emerald-800">Resolvidos recentes</h3>
-                    <div className="space-y-2">
-                      {gestaoResolvidos.length === 0 ? <p className="text-sm text-zinc-500">Nenhum relato resolvido recentemente.</p> : null}
+                    {gestaoResolvidos.length === 0 ? <p className="text-sm text-zinc-500">Nenhum relato resolvido recentemente.</p> : null}
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       {gestaoResolvidos.map((r) => (
-                        <div key={r.id} className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3">
-                          <p className="text-xs text-zinc-600">#{r.id_curto} • {r.bloco} • {r.local}</p>
-                          <p className="mt-1 font-semibold">{r.problema}</p>
-                          <div className="mt-2"><Button type="button" onClick={() => setDetalheResolvido(r)}>Ver imagens e detalhes</Button></div>
-                        </div>
+                        <button
+                          key={r.id}
+                          type="button"
+                          className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 text-left transition hover:border-emerald-400 hover:shadow-md"
+                          onClick={() => abrirPaginaRelato(r)}
+                        >
+                          <p className="text-[11px] text-zinc-500">#{r.id_curto} · {r.bloco} · {r.local}</p>
+                          <p className="mt-1 line-clamp-2 text-sm font-semibold leading-snug">{r.problema}</p>
+                          <span className="mt-2 inline-block status-badge status-badge-resolved">Concluído</span>
+                        </button>
                       ))}
                     </div>
                   </div>
-                </div>
               </section>
 
               <section className="card card-gestao">
@@ -1525,27 +1553,20 @@ export function App() {
               </div>
             ) : null}
 
-            {etapaNavegacao === 'campus' && campusSugerido ? (
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+            {campusSugerido && campusId === campusSugerido.id ? (
+              <div className="mb-4 flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <LocateFixed className="h-4 w-4 shrink-0 text-indigo-600" />
-                  <span className="text-sm text-indigo-800">
-                    Você parece estar perto do <strong>Campus {campusSugerido.nome}</strong>
-                  </span>
+                  <LocateFixed className="h-3.5 w-3.5 text-indigo-500" />
+                  <span className="text-sm font-semibold text-indigo-800">{campusSugerido.nome}</span>
+                  <span className="hidden text-xs text-indigo-500 sm:inline">detectado pela localização</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="primary" onClick={() => resetFluxoApartirCampus(campusSugerido.id)}>
-                    Ir direto
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={() => setCampusSugerido(null)}
-                    className="rounded p-1 text-indigo-400 hover:text-indigo-700"
-                    aria-label="Fechar sugestão"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  className="text-xs text-indigo-600 hover:underline"
+                  onClick={() => { setCampusSugerido(null); resetFluxoApartirCampus(''); }}
+                >
+                  Ver todos os campus
+                </button>
               </div>
             ) : null}
 
