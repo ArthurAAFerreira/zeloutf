@@ -135,6 +135,7 @@ export function App() {
   const [fotoRelatoArquivo, setFotoRelatoArquivo] = useState<File | null>(null);
   const [gestaoAbertos, setGestaoAbertos] = useState<OcorrenciaResumo[]>([]);
   const [gestaoResolvidos, setGestaoResolvidos] = useState<OcorrenciaResumo[]>([]);
+  const [gestaoErroCarregamento, setGestaoErroCarregamento] = useState<string | null>(null);
   const [campusGestaoPendente, setCampusGestaoPendente] = useState<string | null>(null);
   const [senhaGestaoCampus, setSenhaGestaoCampus] = useState('');
   const [erroSenhaGestaoCampus, setErroSenhaGestaoCampus] = useState<string | null>(null);
@@ -421,13 +422,15 @@ export function App() {
         return;
       }
 
+      setGestaoErroCarregamento(null);
       try {
         const resultado = await listarRelatosGestaoPorUnidade(unidadeGestao.nome);
         setGestaoAbertos(resultado.abertos);
         setGestaoResolvidos(resultado.resolvidos);
-      } catch {
+      } catch (e) {
         setGestaoAbertos([]);
         setGestaoResolvidos([]);
+        setGestaoErroCarregamento(e instanceof Error ? e.message : String(e));
       }
     }
 
@@ -1429,7 +1432,8 @@ export function App() {
 
                 <div>
                     <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-indigo-900">Abertos / Em verificação</h3>
-                    {gestaoAbertos.length === 0 ? <p className="text-sm text-zinc-500">Nenhum relato pendente.</p> : null}
+                    {gestaoErroCarregamento ? <p className="text-xs font-mono text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-2">{gestaoErroCarregamento}</p> : null}
+                    {!gestaoErroCarregamento && gestaoAbertos.length === 0 ? <p className="text-sm text-zinc-500">Nenhum relato pendente.</p> : null}
                     <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       {gestaoAbertos.map((r) => (
                         <button

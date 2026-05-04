@@ -74,7 +74,22 @@ CREATE POLICY "gestao_can_update_ocorrencias"
   )
   WITH CHECK (true);
 
--- 9. Colunas de localização do relator (se não existirem)
+-- 9. Policy INSERT — anon (novos relatos de usuários não logados)
+GRANT INSERT ON zeloutf.ocorrencias TO anon;
+DROP POLICY IF EXISTS "anon_can_insert_ocorrencias" ON zeloutf.ocorrencias;
+CREATE POLICY "anon_can_insert_ocorrencias"
+  ON zeloutf.ocorrencias
+  FOR INSERT TO anon
+  WITH CHECK (true);
+
+-- 10. Colunas de localização do relator (se não existirem)
 ALTER TABLE zeloutf.ocorrencias
   ADD COLUMN IF NOT EXISTS lat_relator DOUBLE PRECISION,
   ADD COLUMN IF NOT EXISTS lon_relator DOUBLE PRECISION;
+
+-- ================================================================
+-- PARTE 3: remover view obsoleta de public
+-- ================================================================
+
+-- 11. Remover view public.ocorrencias (dados reais estão em zeloutf.ocorrencias)
+DROP VIEW IF EXISTS public.ocorrencias;
