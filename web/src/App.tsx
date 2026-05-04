@@ -1291,9 +1291,11 @@ export function App() {
             <button
               type="button"
               onClick={entrarModoGestao}
-              className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${sessaoGestao ? 'border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100' : 'border-zinc-200 bg-white text-zinc-600 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700'}`}
+              className={`btn-gestao-header ${sessaoGestao ? 'btn-gestao-header-active' : ''}`}
             >
-              <ShieldCheck className="h-3.5 w-3.5" /> Gestão
+              <ShieldCheck className="h-4 w-4" />
+              <span>Gestão</span>
+              {sessaoGestao ? <span className="btn-gestao-dot" /> : null}
             </button>
           ) : null}
         </div>
