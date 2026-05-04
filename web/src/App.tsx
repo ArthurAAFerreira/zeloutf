@@ -1551,6 +1551,13 @@ export function App() {
             {tituloEtapa ? (
               <div className="mb-2 text-center">
                 <h2 className="mt-1 text-center text-4xl font-semibold text-zinc-900 md:text-[2.65rem]">{tituloEtapa}</h2>
+                {unidade ? (
+                  <p className="mt-1 flex items-center justify-center gap-1.5 text-base font-semibold text-indigo-600">
+                    <MapPin className="h-4 w-4" />
+                    {unidade.nome}
+                    {sedeId && unidade.temSedes ? <><span className="text-zinc-300">·</span><span className="text-zinc-500 font-normal">{unidade.sedes[sedeId]?.nome}</span></> : null}
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
