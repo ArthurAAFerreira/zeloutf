@@ -17,7 +17,6 @@ import {
   Send,
   ShieldCheck,
   Toilet,
-  Trees,
 } from 'lucide-react';
 import { DADOS_UNIDADES, PROBLEMAS_POR_AMBIENTE } from './data/catalog';
 import type { CategoriaGrupo, OcorrenciaInsert, Unidade } from './types/domain';
@@ -139,7 +138,6 @@ export function App() {
   const [campusGestaoPendente, setCampusGestaoPendente] = useState<string | null>(null);
   const [senhaGestaoCampus, setSenhaGestaoCampus] = useState('');
   const [erroSenhaGestaoCampus, setErroSenhaGestaoCampus] = useState<string | null>(null);
-  const [naturezaEscolhida, setNaturezaEscolhida] = useState(false);
   const [gestaoRelatoAtivo, setGestaoRelatoAtivo] = useState<OcorrenciaResumo | null>(null);
   const [sessaoGestao, setSessaoGestao] = useState<Session | null>(null);
   const [campusSugerido, setCampusSugerido] = useState<{ id: string; nome: string } | null>(null);
@@ -386,7 +384,6 @@ export function App() {
       setCategoria('');
       form.resetField('problema');
       form.setValue('tipo', 'Reclamação');
-      setNaturezaEscolhida(false);
     }
 
     window.addEventListener('popstate', onPopState);
@@ -451,7 +448,6 @@ export function App() {
     form.resetField('problema');
     setFotoRelatoArquivo(null);
     form.setValue('tipo', 'Reclamação');
-    setNaturezaEscolhida(false);
   }
 
   async function reduzirImagemParaUpload(file: File): Promise<File> {
@@ -495,15 +491,11 @@ export function App() {
   }
 
   async function onSubmit(values: OcorrenciaFormData) {
-    if (!unidade || !bloco || !ambienteId || !categoria) {
+    if (!unidade || !bloco || (bloco !== 'Geral' && !ambienteId) || !categoria) {
       setErro('Selecione campus, bloco, ambiente e categoria antes de enviar.');
       return;
     }
 
-    if (!naturezaEscolhida) {
-      setErro('Selecione a natureza do relato antes de enviar.');
-      return;
-    }
 
     setErro(null);
     setEnviando(true);
@@ -550,7 +542,6 @@ export function App() {
       setSucesso(true);
       form.reset();
       form.setValue('tipo', 'Reclamação');
-      setNaturezaEscolhida(false);
       setFotoRelatoArquivo(null);
       setFeedReloadToken((v) => v + 1);
     } catch (submitError: unknown) {
@@ -599,8 +590,7 @@ export function App() {
     if (id === 'areas_gerais_academicas_adm') return Briefcase;
     if (id === 'circulacao') return Footprints;
     if (id === 'sanitarios') return Toilet;
-    if (id === 'externa') return Trees;
-    return Building2;
+      return Building2;
   }
 
   function animarSelecaoParaCaminho(text: string, event: MouseEvent<HTMLButtonElement>) {
@@ -640,17 +630,15 @@ export function App() {
     setCategoria('');
     form.resetField('problema');
     form.setValue('tipo', 'Reclamação');
-    setNaturezaEscolhida(false);
   }
 
   function selecionarBloco(nome: string, event: MouseEvent<HTMLButtonElement>) {
     animarSelecaoParaCaminho(nome, event);
     setBloco(nome);
-    setAmbienteId('');
+    setAmbienteId(nome === 'Geral' ? 'areas_gerais_academicas_adm' : '');
     setCategoria('');
     form.resetField('problema');
     form.setValue('tipo', 'Reclamação');
-    setNaturezaEscolhida(false);
   }
 
   function voltarParaInicioRelatos() {
@@ -774,7 +762,6 @@ export function App() {
       setCategoria('');
       form.resetField('problema');
       form.setValue('tipo', 'Reclamação');
-      setNaturezaEscolhida(false);
       return;
     }
 
@@ -784,7 +771,6 @@ export function App() {
       setCategoria('');
       form.resetField('problema');
       form.setValue('tipo', 'Reclamação');
-      setNaturezaEscolhida(false);
       return;
     }
 
@@ -794,7 +780,6 @@ export function App() {
       setCategoria('');
       form.resetField('problema');
       form.setValue('tipo', 'Reclamação');
-      setNaturezaEscolhida(false);
       return;
     }
 
@@ -1006,7 +991,6 @@ export function App() {
       etapaNavegacao === 'sede' ? 'Sede' :
         etapaNavegacao === 'bloco' ? 'Bloco' : 'Relato';
 
-  const naturezaSelecionada = form.watch('tipo');
   const grupoSelecionado = categoria;
   const nomeSedeAtual = unidade?.temSedes && sedeId ? unidade.sedes[sedeId]?.nome ?? null : null;
   const unidadePaginaRelato = useMemo<Unidade | null>(() => {
@@ -1659,34 +1643,7 @@ export function App() {
             <>
               <section className="card card-hover-lift card-relato-compact">
                 <form className="space-y-3" onSubmit={form.handleSubmit(onSubmit)}>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium" htmlFor="natureza">Natureza</label>
-                    <div id="natureza" className="choice-wrap choice-wrap-natureza">
-                      <div className="flex flex-wrap justify-center gap-2">
-                        <button
-                          type="button"
-                          className={naturezaEscolhida && naturezaSelecionada === 'Melhoria' ? 'chip-btn chip-btn-active' : 'chip-btn'}
-                          onClick={() => {
-                            form.setValue('tipo', 'Melhoria');
-                            setNaturezaEscolhida(true);
-                          }}
-                        >
-                          Sugestão de Melhoria
-                        </button>
-                        <button
-                          type="button"
-                          className={naturezaEscolhida && naturezaSelecionada === 'Reclamação' ? 'chip-btn chip-btn-active' : 'chip-btn'}
-                          onClick={() => {
-                            form.setValue('tipo', 'Reclamação');
-                            setNaturezaEscolhida(true);
-                          }}
-                        >
-                          Fato Ocorrido
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
+                  {bloco !== 'Geral' ? (
                   <div>
                     <label className="mb-1 block text-sm font-medium">Local</label>
                     <div className="choice-wrap choice-wrap-local">
@@ -1714,6 +1671,7 @@ export function App() {
                       </div>
                     </div>
                   </div>
+                  ) : null}
 
                   <div>
                     <label className="mb-1 block text-sm font-medium">Grupo</label>

@@ -11,7 +11,7 @@ export const PROBLEMAS_POR_AMBIENTE: Record<string, AmbienteConfig> = {
     },
   },
   circulacao: {
-    nome: 'Circulação / Corredor',
+    nome: 'Área Externa e de Circulação Interna',
     icone: 'directions_walk',
     categorias: {
       estrutura: ['Iluminação', 'Pintura e Acabamento', 'Elétrica', 'Áreas Verdes', 'Acessibilidade', 'Climatização (Ar/Ventilação)', 'Elevadores', 'Extintores e Mangueiras', 'Portas, Janelas, Vidros, etc'],
@@ -37,18 +37,9 @@ export const PROBLEMAS_POR_AMBIENTE: Record<string, AmbienteConfig> = {
       bens: ['Dano ou Quebra', 'Problema e Forma de Utilização', 'Melhorias', 'Falta de bens', 'Demais Questões'],
     },
   },
-  externa: {
-    nome: 'Área Externa',
-    icone: 'park',
-    categorias: {
-      estrutura: ['Iluminação', 'Pintura e Acabamento', 'Elétrica', 'Áreas Verdes', 'Acessibilidade', 'Climatização (Ar/Ventilação)', 'Extintores e Mangueiras', 'Portas, Janelas, Vidros, etc'],
-      servicos: ['Vigilância e Segurança', 'Limpeza', 'Motorista e Transporte', 'Capina e Jardinagem', 'Sinalização', 'Rede e Internet', 'Apoio ou Acadêmico', 'Portaria', 'Outros Serviços'],
-      bens: ['Dano ou Quebra', 'Problema e Forma de Utilização', 'Melhorias', 'Falta de bens', 'Demais Questões'],
-    },
-  },
 };
 
-const AMBIENTES_PADRAO_LISTA = ['areas_gerais_academicas_adm', 'circulacao', 'sanitarios', 'externa'];
+const AMBIENTES_PADRAO_LISTA = ['areas_gerais_academicas_adm', 'circulacao', 'sanitarios'];
 
 export const DADOS_UNIDADES: Record<string, Unidade> = {
   ct: {
@@ -72,13 +63,13 @@ export const DADOS_UNIDADES: Record<string, Unidade> = {
           'Bloco J': AMBIENTES_PADRAO_LISTA,
           'Bloco K': AMBIENTES_PADRAO_LISTA,
           'Bloco L': AMBIENTES_PADRAO_LISTA,
-          'Bloco M - Restaurante Universitário': ['restaurante', 'circulacao', 'sanitarios', 'externa'],
+          'Bloco M - Restaurante Universitário': ['restaurante', 'circulacao', 'sanitarios'],
           'Bloco N': AMBIENTES_PADRAO_LISTA,
-          'Bloco O - Ginásio': ['areas_gerais_academicas_adm', 'circulacao', 'sanitarios', 'externa'],
+          'Bloco O - Ginásio': ['areas_gerais_academicas_adm', 'circulacao', 'sanitarios'],
           'Bloco P': AMBIENTES_PADRAO_LISTA,
           'Bloco Q': AMBIENTES_PADRAO_LISTA,
-          'Bloco R - Mini-ginásio': ['circulacao', 'sanitarios', 'externa'],
-          'Bloco S - DAEFI / Piscina': ['areas_gerais_academicas_adm', 'circulacao', 'sanitarios', 'externa'],
+          'Bloco R - Mini-ginásio': ['circulacao', 'sanitarios'],
+          'Bloco S - DAEFI / Piscina': ['areas_gerais_academicas_adm', 'circulacao', 'sanitarios'],
           'Bloco T': AMBIENTES_PADRAO_LISTA,
           'Bloco U': AMBIENTES_PADRAO_LISTA,
           'Bloco V': AMBIENTES_PADRAO_LISTA,
@@ -105,7 +96,7 @@ export const DADOS_UNIDADES: Record<string, Unidade> = {
           'Bloco Q': AMBIENTES_PADRAO_LISTA,
           'Bloco R': AMBIENTES_PADRAO_LISTA,
           'Bloco Z': AMBIENTES_PADRAO_LISTA,
-          'Áreas de Acesso': ['circulacao', 'externa'],
+          'Áreas de Acesso': ['circulacao'],
           'Área de Circulação': ['circulacao'],
         },
       },
@@ -124,7 +115,7 @@ export const DADOS_UNIDADES: Record<string, Unidade> = {
           'Bloco L': AMBIENTES_PADRAO_LISTA,
           'Bloco M': AMBIENTES_PADRAO_LISTA,
           'Bloco N': AMBIENTES_PADRAO_LISTA,
-          'Áreas de Acesso': ['circulacao', 'externa'],
+          'Áreas de Acesso': ['circulacao'],
           'Área de Circulação': ['circulacao'],
         },
       },
