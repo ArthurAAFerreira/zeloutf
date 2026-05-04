@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LogIn, X } from 'lucide-react';
 import { fazerLogin } from '../../lib/auth';
+import { db } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 
 interface LoginModalProps {
@@ -14,6 +15,10 @@ export function LoginModal({ onSucesso, onFechar }: LoginModalProps) {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  useEffect(() => {
+    void db.schema('zeloutf').from('gestao_acesso').select('papel').limit(1);
+  }, []);
+
   async function entrar() {
     const raw = email.trim();
     const s = senha.trim();
@@ -21,6 +26,7 @@ export function LoginModal({ onSucesso, onFechar }: LoginModalProps) {
     const e = raw.includes('@') ? raw : raw + '@zelo.utfpr';
     setCarregando(true);
     setErro(null);
+    void db.schema('zeloutf').from('gestao_acesso').select('papel').limit(1);
     try {
       await fazerLogin(e, s);
       onSucesso();
