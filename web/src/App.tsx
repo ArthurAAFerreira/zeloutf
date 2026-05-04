@@ -37,7 +37,7 @@ import {
   validarSenhaAdmin,
   type OcorrenciaResumo,
 } from './services/ocorrencias';
-import { db, DB_TABLE_OCORRENCIAS } from './lib/supabase';
+import { db, DB_SCHEMA, DB_TABLE_OCORRENCIAS } from './lib/supabase';
 import { buscarAcessoGestao, fazerLogout, type GestaoAcesso, type Session } from './lib/auth';
 import { AppFooter } from './components/layout/AppFooter';
 import { GestaoModal } from './components/gestao/GestaoModal';
@@ -257,15 +257,9 @@ export function App() {
 
   useEffect(() => {
     async function carregarEstadoInicial() {
-      void db.from(DB_TABLE_OCORRENCIAS).select('id_curto').limit(1);
+      void db.schema(DB_SCHEMA).from(DB_TABLE_OCORRENCIAS).select('id_curto').limit(1);
       const { data: { session } } = await db.auth.getSession();
-      if (session) {
-        setSessaoGestao(session);
-        setGestaoAcessoCarregando(true);
-        const acesso = await buscarAcessoGestao();
-        setGestaoAcesso(acesso);
-        setGestaoAcessoCarregando(false);
-      }
+      if (session) setSessaoGestao(session);
 
       const campusDash = parsearRotaDashboard(window.location.pathname);
       if (campusDash) {
