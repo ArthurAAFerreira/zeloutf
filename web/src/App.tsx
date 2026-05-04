@@ -435,7 +435,7 @@ export function App() {
       } catch (e) {
         setGestaoAbertos([]);
         setGestaoResolvidos([]);
-        setGestaoErroCarregamento(JSON.stringify(e));
+        setGestaoErroCarregamento('error');
       }
     }
 
@@ -1439,7 +1439,12 @@ export function App() {
 
                 <div>
                     <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-indigo-900">Abertos / Em verificação</h3>
-                    {gestaoErroCarregamento ? <p className="text-xs font-mono text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2 mb-2">{gestaoErroCarregamento}</p> : null}
+                    {gestaoErroCarregamento ? (
+                      <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+                        <p className="text-sm text-red-700">Não foi possível carregar os relatos.</p>
+                        <button type="button" className="text-xs font-semibold text-red-600 hover:underline" onClick={() => setFeedReloadToken(t => t + 1)}>Tentar novamente</button>
+                      </div>
+                    ) : null}
                     {!gestaoErroCarregamento && gestaoAbertos.length === 0 ? <p className="text-sm text-zinc-500">Nenhum relato pendente.</p> : null}
                     <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       {gestaoAbertos.map((r) => (
