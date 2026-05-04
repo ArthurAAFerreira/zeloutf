@@ -253,7 +253,9 @@ export function App() {
         if (maisProximo && maisProximo.dist < 80) {
           const nome = DADOS_UNIDADES[maisProximo.id]?.nome ?? maisProximo.id;
           setCampusSugerido({ id: maisProximo.id, nome });
-          resetFluxoApartirCampus(maisProximo.id);
+          if (window.location.pathname === '/') {
+            resetFluxoApartirCampus(maisProximo.id);
+          }
         }
       });
     }
