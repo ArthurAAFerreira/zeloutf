@@ -1304,7 +1304,7 @@ export function App() {
       {modo === 'relatos' ? (
         (campusId || nomeSedeAtual || bloco) ? (
           <div ref={breadcrumbRef} className="mb-4 flex min-h-8 flex-wrap items-center justify-center gap-2 text-sm">
-            <button type="button" className="crumb-btn" onClick={() => irParaPontoCaminho('campus')}>{unidade?.nome ?? 'Unidade'}</button>
+            <button type="button" className="crumb-btn crumb-btn-campus" onClick={() => irParaPontoCaminho('campus')}>{unidade?.nome ?? 'Unidade'}</button>
             {nomeSedeAtual ? <button type="button" className="crumb-btn" onClick={() => irParaPontoCaminho('sede')}>{nomeSedeAtual}</button> : null}
             {bloco ? <button type="button" className="crumb-btn" onClick={() => irParaPontoCaminho('bloco')}>{bloco}</button> : null}
           </div>
@@ -1553,29 +1553,22 @@ export function App() {
             {tituloEtapa ? (
               <div className="mb-2 text-center">
                 <h2 className="mt-1 text-center text-4xl font-semibold text-zinc-900 md:text-[2.65rem]">{tituloEtapa}</h2>
-                {unidade ? (
-                  <p className="mt-1 flex items-center justify-center gap-1.5 text-base font-semibold text-indigo-600">
-                    <MapPin className="h-4 w-4" />
-                    {unidade.nome}
-                    {sedeId && unidade.temSedes ? <><span className="text-zinc-300">·</span><span className="text-zinc-500 font-normal">{unidade.sedes[sedeId]?.nome}</span></> : null}
-                  </p>
-                ) : null}
               </div>
             ) : null}
 
             {campusSugerido && campusId === campusSugerido.id ? (
-              <div className="mb-4 flex items-center justify-between rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-2">
+              <div className="mb-4 rounded-xl border border-indigo-100 bg-indigo-50/80 px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <LocateFixed className="h-3.5 w-3.5 text-indigo-500" />
-                  <span className="text-sm font-semibold text-indigo-800">{campusSugerido.nome}</span>
-                  <span className="hidden text-xs text-indigo-500 sm:inline">detectado pela localização</span>
+                  <LocateFixed className="h-4 w-4 text-indigo-500" />
+                  <span className="text-base font-bold text-indigo-900">{campusSugerido.nome}</span>
+                  <span className="text-xs text-indigo-500">detectado pela localização</span>
                 </div>
                 <button
                   type="button"
-                  className="text-xs text-indigo-600 hover:underline"
+                  className="mt-1.5 text-xs font-medium text-indigo-500 hover:text-indigo-700 hover:underline"
                   onClick={() => { setCampusSugerido(null); resetFluxoApartirCampus(''); }}
                 >
-                  Ver todos os campus
+                  Ver todos os campus →
                 </button>
               </div>
             ) : null}

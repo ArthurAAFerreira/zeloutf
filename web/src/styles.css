@@ -289,6 +289,14 @@ body {
   transform: translateY(-1px);
   box-shadow: 0 3px 8px rgba(245,158,11,0.15);
 }
+.crumb-btn-campus {
+  @apply border-indigo-200 bg-indigo-50 font-semibold text-indigo-800;
+  box-shadow: 0 1px 4px rgba(99,102,241,0.1);
+}
+.crumb-btn-campus:hover {
+  @apply border-indigo-300 bg-indigo-100 text-indigo-900;
+  box-shadow: 0 3px 10px rgba(99,102,241,0.15);
+}
 
 
 .app-footer-links {
