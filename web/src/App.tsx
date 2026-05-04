@@ -143,6 +143,7 @@ export function App() {
   const [sessaoGestao, setSessaoGestao] = useState<Session | null>(null);
   const [campusSugerido, setCampusSugerido] = useState<{ id: string; nome: string } | null>(null);
   const [gestaoAcesso, setGestaoAcesso] = useState<GestaoAcesso | null>(null);
+  const [gestaoAcessoCarregando, setGestaoAcessoCarregando] = useState(false);
   const [mostrarLoginGestao, setMostrarLoginGestao] = useState(false);
   const [mostrarAlterarSenha, setMostrarAlterarSenha] = useState(false);
   const [rastroClique, setRastroClique] = useState<{
@@ -222,10 +223,13 @@ export function App() {
     const { data: { subscription } } = db.auth.onAuthStateChange(async (_event, session) => {
       setSessaoGestao(session);
       if (session) {
+        setGestaoAcessoCarregando(true);
         const acesso = await buscarAcessoGestao();
         setGestaoAcesso(acesso);
+        setGestaoAcessoCarregando(false);
       } else {
         setGestaoAcesso(null);
+        setGestaoAcessoCarregando(false);
       }
     });
     return () => subscription.unsubscribe();
@@ -255,8 +259,10 @@ export function App() {
       const { data: { session } } = await db.auth.getSession();
       if (session) {
         setSessaoGestao(session);
+        setGestaoAcessoCarregando(true);
         const acesso = await buscarAcessoGestao();
         setGestaoAcesso(acesso);
+        setGestaoAcessoCarregando(false);
       }
 
       const campusDash = parsearRotaDashboard(window.location.pathname);
@@ -707,10 +713,20 @@ export function App() {
   }
 
   function sairDaGestao() {
+    Object.keys(localStorage).filter(k => k.startsWith('sb-')).forEach(k => localStorage.removeItem(k));
     setSessaoGestao(null);
     setGestaoAcesso(null);
+    setGestaoAcessoCarregando(false);
     voltarParaInicioRelatos();
     void fazerLogout();
+  }
+
+  async function recarregarAcesso() {
+    if (!sessaoGestao) return;
+    setGestaoAcessoCarregando(true);
+    const acesso = await buscarAcessoGestao();
+    setGestaoAcesso(acesso);
+    setGestaoAcessoCarregando(false);
   }
 
   function abrirDashboard() {
@@ -1325,9 +1341,14 @@ export function App() {
 
               <div className="grid gap-3 md:grid-cols-4">
                 {campusVisiveis.length === 0 && sessaoGestao ? (
-                  <p className="col-span-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-center text-sm text-amber-800">
-                    Nenhum campus atribuído à sua conta. Contacte o administrador do sistema.
-                  </p>
+                  gestaoAcessoCarregando ? (
+                    <p className="col-span-4 py-6 text-center text-sm text-zinc-400">Carregando acesso...</p>
+                  ) : (
+                    <div className="col-span-4 flex flex-col items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-6 text-center">
+                      <p className="text-sm text-amber-800">Não foi possível carregar o acesso à sua conta.</p>
+                      <Button type="button" onClick={() => void recarregarAcesso()}>Tentar novamente</Button>
+                    </div>
+                  )
                 ) : null}
                 {campusVisiveis.map(([id, item]) => (
                   <button
