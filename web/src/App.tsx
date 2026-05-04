@@ -433,8 +433,7 @@ export function App() {
       } catch (e) {
         setGestaoAbertos([]);
         setGestaoResolvidos([]);
-        const msg = e instanceof Error ? e.message : (e && typeof e === 'object' && 'message' in e ? String((e as {message: unknown}).message) : JSON.stringify(e));
-        setGestaoErroCarregamento(msg);
+        setGestaoErroCarregamento(JSON.stringify(e));
       }
     }
 
