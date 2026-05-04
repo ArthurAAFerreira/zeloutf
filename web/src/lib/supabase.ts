@@ -10,7 +10,9 @@ if (!url || !anon) {
 const fallbackUrl = 'https://example.supabase.co';
 const fallbackAnon = 'public-anon-key';
 
-export const db = createClient(url ?? fallbackUrl, anon ?? fallbackAnon);
+export const db = createClient(url ?? fallbackUrl, anon ?? fallbackAnon, {
+  db: { schema: 'zeloutf' },
+});
 
 export const DB_SCHEMA = 'zeloutf';
 export const DB_TABLE_OCORRENCIAS = 'ocorrencias';
