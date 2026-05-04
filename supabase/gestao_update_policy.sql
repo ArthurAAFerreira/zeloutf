@@ -17,11 +17,19 @@ CREATE TABLE IF NOT EXISTS zeloutf.gestao_acesso (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
--- 2. Copiar dados existentes de public.gestao_acesso (se houver)
-INSERT INTO zeloutf.gestao_acesso (id, user_id, campus_ids, papel, created_at)
-SELECT id, user_id, campus_ids, papel, created_at
-FROM public.gestao_acesso
-ON CONFLICT (user_id) DO NOTHING;
+-- 2. Copiar dados de public.gestao_acesso caso exista
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'gestao_acesso'
+  ) THEN
+    INSERT INTO zeloutf.gestao_acesso (id, user_id, campus_ids, papel, created_at)
+    SELECT id, user_id, campus_ids, papel, created_at
+    FROM public.gestao_acesso
+    ON CONFLICT (user_id) DO NOTHING;
+  END IF;
+END $$;
 
 -- 3. RLS e grants para zeloutf.gestao_acesso
 GRANT USAGE ON SCHEMA zeloutf TO authenticated;
