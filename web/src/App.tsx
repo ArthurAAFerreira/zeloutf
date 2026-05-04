@@ -553,8 +553,11 @@ export function App() {
       setNaturezaEscolhida(false);
       setFotoRelatoArquivo(null);
       setFeedReloadToken((v) => v + 1);
-    } catch (submitError) {
-      setErro('Falha ao enviar relato. Verifique as variáveis de ambiente e permissões no Supabase.');
+    } catch (submitError: unknown) {
+      const msg = submitError && typeof submitError === 'object' && 'message' in submitError
+        ? (submitError as { message: string }).message
+        : String(submitError);
+      setErro(`Falha ao enviar relato: ${msg}`);
       console.error(submitError);
     } finally {
       setEnviando(false);
