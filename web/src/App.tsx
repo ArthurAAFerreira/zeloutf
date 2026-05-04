@@ -10,6 +10,7 @@ import {
   Footprints,
   Globe,
   ImagePlus,
+  LocateFixed,
   LogOut,
   MapPin,
   Search,
@@ -17,6 +18,7 @@ import {
   ShieldCheck,
   Toilet,
   Trees,
+  X,
 } from 'lucide-react';
 import { DADOS_UNIDADES, PROBLEMAS_POR_AMBIENTE } from './data/catalog';
 import type { CategoriaGrupo, OcorrenciaInsert, Unidade } from './types/domain';
@@ -44,6 +46,32 @@ import { AlterarSenhaModal } from './components/auth/AlterarSenhaModal';
 import { DashboardGeral } from './components/dashboard/DashboardGeral';
 import { DashboardPage } from './components/dashboard/DashboardPage';
 import { Button } from './components/ui/Button';
+
+const CAMPUS_COORDS: Record<string, [number, number]> = {
+  ct: [-25.4484, -49.2411],
+  ld: [-23.3126, -51.1628],
+  cp: [-24.0479, -52.3818],
+  ap: [-23.5577, -51.4674],
+  cm: [-23.1695, -50.6473],
+  dv: [-25.7428, -53.0639],
+  fb: [-26.0793, -53.0493],
+  gp: [-25.3877, -51.4714],
+  md: [-25.2958, -54.0930],
+  pb: [-26.2308, -52.6654],
+  pg: [-25.0977, -50.1656],
+  sh: [-24.8606, -54.3377],
+  td: [-24.7197, -53.7446],
+};
+
+function distanciaKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 const CATEGORIA_LABEL: Record<CategoriaGrupo, string> = {
   estrutura: 'Estrutura',
@@ -113,6 +141,7 @@ export function App() {
   const [naturezaEscolhida, setNaturezaEscolhida] = useState(false);
   const [gestaoRelatoAtivo, setGestaoRelatoAtivo] = useState<OcorrenciaResumo | null>(null);
   const [sessaoGestao, setSessaoGestao] = useState<Session | null>(null);
+  const [campusSugerido, setCampusSugerido] = useState<{ id: string; nome: string } | null>(null);
   const [gestaoAcesso, setGestaoAcesso] = useState<GestaoAcesso | null>(null);
   const [mostrarLoginGestao, setMostrarLoginGestao] = useState(false);
   const [mostrarAlterarSenha, setMostrarAlterarSenha] = useState(false);
@@ -200,6 +229,24 @@ export function App() {
       }
     });
     return () => subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const { latitude, longitude } = pos.coords;
+        const maisProximo = Object.entries(CAMPUS_COORDS).reduce<{ id: string; dist: number } | null>(
+          (acc, [id, [lat, lon]]) => {
+            const d = distanciaKm(latitude, longitude, lat, lon);
+            return acc === null || d < acc.dist ? { id, dist: d } : acc;
+          },
+          null,
+        );
+        if (maisProximo && maisProximo.dist < 80) {
+          setCampusSugerido({ id: maisProximo.id, nome: DADOS_UNIDADES[maisProximo.id]?.nome ?? maisProximo.id });
+        }
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -1454,6 +1501,30 @@ export function App() {
             {tituloEtapa ? (
               <div className="mb-2 text-center">
                 <h2 className="mt-1 text-center text-4xl font-semibold text-zinc-900 md:text-[2.65rem]">{tituloEtapa}</h2>
+              </div>
+            ) : null}
+
+            {etapaNavegacao === 'campus' && campusSugerido ? (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <LocateFixed className="h-4 w-4 shrink-0 text-indigo-600" />
+                  <span className="text-sm text-indigo-800">
+                    Você parece estar perto do <strong>Campus {campusSugerido.nome}</strong>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button type="button" variant="primary" onClick={() => resetFluxoApartirCampus(campusSugerido.id)}>
+                    Ir direto
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setCampusSugerido(null)}
+                    className="rounded p-1 text-indigo-400 hover:text-indigo-700"
+                    aria-label="Fechar sugestão"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             ) : null}
 
