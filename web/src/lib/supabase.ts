@@ -12,5 +12,5 @@ const fallbackAnon = 'public-anon-key';
 
 export const db = createClient(url ?? fallbackUrl, anon ?? fallbackAnon);
 
-export const DB_SCHEMA = import.meta.env.VITE_SUPABASE_SCHEMA ?? 'public';
+export const DB_SCHEMA = import.meta.env.VITE_SUPABASE_SCHEMA ?? 'zeloutf';
 export const DB_TABLE_OCORRENCIAS = 'ocorrencias';
