@@ -35,7 +35,7 @@ import {
   validarSenhaAdmin,
   type OcorrenciaResumo,
 } from './services/ocorrencias';
-import { db } from './lib/supabase';
+import { db, DB_TABLE_OCORRENCIAS } from './lib/supabase';
 import { buscarAcessoGestao, fazerLogout, type GestaoAcesso, type Session } from './lib/auth';
 import { AppFooter } from './components/layout/AppFooter';
 import { GestaoModal } from './components/gestao/GestaoModal';
@@ -204,6 +204,7 @@ export function App() {
 
   useEffect(() => {
     async function carregarEstadoInicial() {
+      void db.from(DB_TABLE_OCORRENCIAS).select('id_curto').limit(1);
       const { data: { session } } = await db.auth.getSession();
       if (session) {
         setSessaoGestao(session);
@@ -1237,7 +1238,7 @@ export function App() {
                 <div>
                   <h2 className="text-3xl font-semibold text-indigo-950">Campus da Gestão</h2>
                   {sessaoGestao ? (
-                    <p className="mt-0.5 text-xs text-zinc-500">{sessaoGestao.user.email}</p>
+                    <p className="mt-0.5 text-xs text-zinc-500">{sessaoGestao.user.email?.replace('@zelo.utfpr', '') ?? ''}</p>
                   ) : null}
                 </div>
                 <div className="flex items-center gap-2">
@@ -1823,6 +1824,7 @@ export function App() {
             relato={gestaoRelatoAtivo}
             onFechar={fecharGestaoRelato}
             onSalvo={fecharGestaoRelato}
+            temSessao={!!sessaoGestao}
           />
         ) : null}
 

@@ -38,10 +38,18 @@ export async function alterarSenha(novaSenha: string): Promise<void> {
 }
 
 export async function buscarAcessoGestao(): Promise<GestaoAcesso | null> {
-  const { data, error } = await db
-    .from('gestao_acesso')
-    .select('papel, campus_ids')
-    .single();
-  if (error || !data) return null;
-  return data as GestaoAcesso;
+  for (let t = 0; t < 3; t++) {
+    try {
+      const query = db.from('gestao_acesso').select('papel, campus_ids').single();
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 8000)
+      );
+      const { data, error } = await Promise.race([query, timeout]);
+      if (!error && data) return data as GestaoAcesso;
+      return null;
+    } catch {
+      if (t < 2) await new Promise<void>((r) => setTimeout(r, 1500 * (t + 1)));
+    }
+  }
+  return null;
 }

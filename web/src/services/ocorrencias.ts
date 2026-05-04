@@ -319,6 +319,25 @@ export async function gerenciarOcorrencia(payload: GerenciarPayload, adminKey: s
   await chamarManageOcorrencia(payload, adminKey);
 }
 
+export async function gerenciarOcorrenciaAutenticado(payload: GerenciarPayload) {
+  const updates: Record<string, unknown> = {
+    status: payload.status,
+    complemento_admin: payload.complemento_admin ?? null,
+    gerenciado_por: payload.gerenciado_por ?? 'gestao-auth',
+  };
+  if (payload.status === 'resolvido') {
+    updates.resolvido_em = new Date().toISOString();
+  } else {
+    updates.resolvido_em = null;
+  }
+  const { error } = await db
+    .schema(DB_SCHEMA)
+    .from(DB_TABLE_OCORRENCIAS)
+    .update(updates)
+    .eq('id', payload.id);
+  if (error) throw new Error(error.message);
+}
+
 export async function validarSenhaAdmin(adminKey: string) {
   try {
     await chamarManageOcorrencia({ validate_only: true }, adminKey);

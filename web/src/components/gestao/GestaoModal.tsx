@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { CheckCircle2, Clock, ExternalLink, X } from 'lucide-react';
 import type { OcorrenciaResumo } from '../../services/ocorrencias';
-import { gerenciarOcorrencia } from '../../services/ocorrencias';
+import { gerenciarOcorrencia, gerenciarOcorrenciaAutenticado } from '../../services/ocorrencias';
 import { Button } from '../ui/Button';
 
 interface GestaoModalProps {
   relato: OcorrenciaResumo;
   onFechar: () => void;
   onSalvo: () => void;
+  temSessao?: boolean;
 }
 
 const STATUS_OPTIONS = [
@@ -16,7 +17,7 @@ const STATUS_OPTIONS = [
   { value: 'resolvido', label: 'Concluído' },
 ] as const;
 
-export function GestaoModal({ relato, onFechar, onSalvo }: GestaoModalProps) {
+export function GestaoModal({ relato, onFechar, onSalvo, temSessao }: GestaoModalProps) {
   const [status, setStatus] = useState(relato.status);
   const [complemento, setComplemento] = useState(relato.complemento_admin ?? '');
   const [adminKey, setAdminKey] = useState('');
@@ -25,24 +26,23 @@ export function GestaoModal({ relato, onFechar, onSalvo }: GestaoModalProps) {
   const [erro, setErro] = useState<string | null>(null);
 
   async function salvar() {
-    const senha = adminKey.trim();
-    if (!senha) {
-      setErro('Informe a senha admin para salvar.');
-      return;
+    if (!temSessao) {
+      const senha = adminKey.trim();
+      if (!senha) {
+        setErro('Informe a senha admin para salvar.');
+        return;
+      }
     }
     setSalvando(true);
     setErro(null);
     setMensagem(null);
     try {
-      await gerenciarOcorrencia(
-        {
-          id: relato.id,
-          status,
-          complemento_admin: complemento,
-          gerenciado_por: 'admin-gestao',
-        },
-        senha,
-      );
+      const payload = { id: relato.id, status, complemento_admin: complemento, gerenciado_por: 'admin-gestao' };
+      if (temSessao) {
+        await gerenciarOcorrenciaAutenticado(payload);
+      } else {
+        await gerenciarOcorrencia(payload, adminKey.trim());
+      }
       setMensagem('Atendimento salvo com sucesso!');
       setTimeout(() => {
         onSalvo();
@@ -107,6 +107,7 @@ export function GestaoModal({ relato, onFechar, onSalvo }: GestaoModalProps) {
                 ))}
               </select>
             </div>
+            {!temSessao ? (
             <div>
               <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Senha admin
@@ -125,6 +126,7 @@ export function GestaoModal({ relato, onFechar, onSalvo }: GestaoModalProps) {
                 placeholder="••••••••"
               />
             </div>
+          ) : null}
           </div>
 
           <div>
