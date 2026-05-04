@@ -225,9 +225,12 @@ export function App() {
       setSessaoGestao(session);
       if (session && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
         setGestaoAcessoCarregando(true);
-        const acesso = await buscarAcessoGestao();
-        setGestaoAcesso(acesso);
-        setGestaoAcessoCarregando(false);
+        try {
+          const acesso = await buscarAcessoGestao();
+          setGestaoAcesso(acesso);
+        } finally {
+          setGestaoAcessoCarregando(false);
+        }
       } else if (!session) {
         setGestaoAcesso(null);
         setGestaoAcessoCarregando(false);

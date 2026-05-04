@@ -38,20 +38,15 @@ export async function alterarSenha(novaSenha: string): Promise<void> {
 }
 
 export async function buscarAcessoGestao(): Promise<GestaoAcesso | null> {
-  for (let t = 0; t < 3; t++) {
-    try {
-      const query = db.schema('zeloutf').from('gestao_acesso').select('papel, campus_ids').maybeSingle();
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 10000)
-      );
-      const { data, error } = await Promise.race([query, timeout]);
-      if (error) throw error;
-      return data ? (data as GestaoAcesso) : null;
-    } catch (e) {
-      const isTimeout = e instanceof Error && e.message === 'timeout';
-      if (!isTimeout || t >= 2) return null;
-      await new Promise<void>((r) => setTimeout(r, 2000 * (t + 1)));
-    }
+  try {
+    const query = db.schema('zeloutf').from('gestao_acesso').select('papel, campus_ids').maybeSingle();
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 8000)
+    );
+    const { data, error } = await Promise.race([query, timeout]);
+    if (error) return null;
+    return data ? (data as GestaoAcesso) : null;
+  } catch {
+    return null;
   }
-  return null;
 }
